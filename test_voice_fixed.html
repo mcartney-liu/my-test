@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修复版语音功能测试</title>
+    <script src="vue3.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; }
+        
+        .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+        
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            padding: 24px; border-radius: 20px; margin-bottom: 24px; 
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .header h1 { font-size: 28px; margin-bottom: 8px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+        
+        .test-panel {
+            background: #1e293b; border-radius: 20px; padding: 24px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3); border: 1px solid #334155;
+            margin-bottom: 24px;
+        }
+        
+        .btn {
+            padding: 12px 24px; border-radius: 12px; border: none; font-size: 16px;
+            font-weight: 600; cursor: pointer; transition: all 0.3s ease; margin: 8px;
+        }
+        .btn-primary { 
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            color: white; 
+        }
+        .btn-secondary {
+            background: #334155; color: #cbd5e1; border: 1px solid #475569;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+        
+        .voice-btn {
+            width: 80px; height: 80px; border-radius: 50%; border: none;
+            background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+            color: white; font-size: 28px; cursor: pointer; margin: 20px auto;
+            display: block; box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
+            transition: all 0.3s ease;
+        }
+        .voice-btn.recording { background: linear-gradient(135deg, #ef4444 0%, #f87171 100%); }
+        
+        .status {
+            padding: 16px; background: rgba(255,255,255,0.05); border-radius: 12px;
+            margin: 16px 0; border: 1px solid #475569; text-align: center;
+        }
+        
+        .log {
+            margin-top: 24px; padding: 16px; background: rgba(0,0,0,0.3); 
+            border-radius: 12px; font-family: monospace; font-size: 12px;
+            max-height: 200px; overflow-y: auto;
+        }
+        .log-item { margin-bottom: 6px; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        .warning { color: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <div class="header">
+            <h1>🎤 修复版语音功能测试</h1>
+            <p>测试完整PM-OS系统中的语音输入模块修复情况</p>
+        </div>
+        
+        <div class="test-panel">
+            <h2>语音功能测试</h2>
+            
+            <!-- 模拟登录状态 -->
+            <div style="margin-bottom: 20px; padding: 16px; background: #0f172a; border-radius: 12px;">
+                <h3>模拟登录状态</h3>
+                <p>当前状态: {{ isLoggedIn ? '已登录' : '未登录' }}</p>
+                <button class="btn btn-primary" @click="simulateLogin">
+                    {{ isLoggedIn ? '已登录' : '模拟登录' }}
+                </button>
+            </div>
+            
+            <!-- 语音测试 -->
+            <div v-if="isLoggedIn" style="margin-bottom: 20px;">
+                <h3>语音输入测试</h3>
+                <button class="voice-btn" @click="toggleVoice" :class="{recording: voiceRecording}">
+                    {{ voiceRecording ? '⏹' : '🎤' }}
+                </button>
+                <div class="status">{{ voiceStatus }}</div>
+                
+                <div v-if="voiceText" style="padding: 12px; background: #0f172a; border-radius: 8px; margin: 16px 0;">
+                    <strong>识别文本:</strong> {{ voiceText }}
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>文本输入（备用）</h4>
+                    <textarea v-model="testText" style="width:100%; min-height:80px; padding:12px; background:#0f172a; border:1px solid #475569; border-radius:8px; color:#f1f5f9; margin:8px 0;"></textarea>
+                    <button class="btn btn-secondary" @click="analyzeTestText">分析文本</button>
+                </div>
+            </div>
+            
+            <!-- 功能检查 -->
+            <div style="margin-top: 24px;">
+                <h3>功能检查</h3>
+                <button class="btn btn-secondary" @click="checkVue">检查Vue.js</button>
+                <button class="btn btn-secondary" @click="checkSpeechAPI">检查语音API</button>
+                <button class="btn btn-secondary" @click="checkInitFunction">检查初始化函数</button>
+            </div>
+        </div>
+        
+        <!-- 诊断日志 -->
+        <div class="log">
+            <h3>系统诊断日志</h3>
+            <div id="logArea">
+                <div v-for="(log, index) in logs" :key="index" :class="['log-item', log.type]">
+                    [{{ log.time }}] {{ log.message }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive } = Vue;
+        
+        createApp({
+            setup() {
+                // 状态
+                const isLoggedIn = ref(false);
+                const voiceRecording = ref(false);
+                const voiceStatus = ref('请先登录');
+                const voiceText = ref('');
+                const testText = ref('');
+                const logs = ref([]);
+                
+                // 语音识别相关变量（模拟完整版的结构）
+                let recognition = null;
+                let finalTranscript = '';
+                
+                // 日志函数
+                function log(message, type = 'info') {
+                    logs.value.push({
+                        time: new Date().toLocaleTimeString(),
+                        message: message,
+                        type: type
+                    });
+                }
+                
+                // 模拟登录
+                function simulateLogin() {
+                    if (isLoggedIn.value) {
+                        log('已经登录过了', 'warning');
+                        return;
+                    }
+                    
+                    isLoggedIn.value = true;
+                    voiceStatus.value = '语音识别已就绪，请点击麦克风按钮开始';
+                    log('模拟登录成功，用户: admin', 'success');
+                    log('语音状态已更新', 'info');
+                }
+                
+                // 检查Vue.js
+                function checkVue() {
+                    log('检查Vue.js...', 'info');
+                    if (typeof Vue !== 'undefined') {
+                        log(`✅ Vue.js已加载 (版本: ${Vue.version || '未知'})`, 'success');
+                        if (typeof Vue.createApp !== 'undefined') {
+                            log('✅ Vue.createApp可用', 'success');
+                        }
+                    } else {
+                        log('❌ Vue.js未加载', 'error');
+                    }
+                }
+                
+                // 检查语音API
+                function checkSpeechAPI() {
+                    log('检查语音识别API...', 'info');
+                    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                        log('✅ 浏览器支持语音识别API', 'success');
+                        log(`API类型: ${window.SpeechRecognition ? '标准' : 'webkit'}`, 'info');
+                    } else {
+                        log('⚠️ 浏览器不支持语音识别API', 'warning');
+                    }
+                }
+                
+                // 检查初始化函数（从完整版复制简化版）
+                function checkInitFunction() {
+                    log('检查语音初始化函数逻辑...', 'info');
+                    
+                    // 模拟initVoiceRecognition函数
+                    const initVoiceRecognition = () => {
+                        try {
+                            if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+                                log('❌ 浏览器不支持语音识别API', 'error');
+                                return false;
+                            }
+                            
+                            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                            recognition = new SpeechRecognition();
+                            recognition.continuous = true;
+                            recognition.interimResults = true;
+                            recognition.lang = 'zh-CN';
+                            finalTranscript = '';
+                            
+                            log('✅ 语音识别对象创建成功', 'success');
+                            return true;
+                        } catch(error) {
+                            log(`❌ 语音识别初始化失败: ${error.message}`, 'error');
+                            return false;
+                        }
+                    };
+                    
+                    // 模拟toggleVoice函数
+                    const toggleVoiceTest = () => {
+                        log('模拟语音切换函数...', 'info');
+                        
+                        if(!recognition){
+                            log('语音识别未初始化，正在初始化...', 'info');
+                            const initSuccess = initVoiceRecognition();
+                            if(!initSuccess){
+                                log('语音识别初始化失败', 'error');
+                                return;
+                            }
+                        }
+                        
+                        log('✅ 语音切换函数逻辑正常', 'success');
+                    };
+                    
+                    // 测试
+                    const initResult = initVoiceRecognition();
+                    if (initResult) {
+                        toggleVoiceTest();
+                    }
+                }
+                
+                // 语音功能
+                function toggleVoice() {
+                    log('执行语音切换操作...', 'info');
+                    
+                    if(voiceRecording.value){
+                        // 停止录音
+                        log('停止语音识别', 'info');
+                        if(recognition){
+                            try {
+                                recognition.stop();
+                            } catch(error) {
+                                log(`停止录音时出错: ${error.message}`, 'warning');
+                            }
+                        }
+                        voiceRecording.value = false;
+                        voiceStatus.value = '录音已停止';
+                    }else{
+                        // 开始录音
+                        log('开始语音识别', 'info');
+                        voiceStatus.value = '正在启动语音识别...';
+                        
+                        if(!recognition){
+                            log('语音识别未初始化，正在初始化...', 'info');
+                            
+                            try {
+                                if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
+                                    log('浏览器不支持语音识别API', 'error');
+                                    voiceStatus.value = '浏览器不支持语音识别';
+                                    return;
+                                }
+                                
+                                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                                recognition = new SpeechRecognition();
+                                recognition.continuous = true;
+                                recognition.interimResults = true;
+                                recognition.lang = 'zh-CN';
+                                finalTranscript = '';
+                                
+                                recognition.onstart = () => {
+                                    log('语音识别已启动', 'success');
+                                    voiceRecording.value = true;
+                                    voiceStatus.value = '🎤 正在聆听，请说话...';
+                                };
+                                
+                                recognition.onresult = (event) => {
+                                    let transcript = '';
+                                    for(let i = event.resultIndex; i < event.results.length; i++){
+                                        transcript += event.results[i][0].transcript;
+                                    }
+                                    
+                                    if (transcript.trim()) {
+                                        finalTranscript = transcript;
+                                        voiceText.value = finalTranscript;
+                                        log(`识别到语音: ${finalTranscript.substring(0, 30)}`, 'info');
+                                    }
+                                };
+                                
+                                recognition.onend = () => {
+                                    log('语音识别结束', 'info');
+                                    voiceRecording.value = false;
+                                    
+                                    if(finalTranscript && finalTranscript.trim()){
+                                        voiceStatus.value = '语音识别完成';
+                                        log('✅ 语音识别成功完成', 'success');
+                                    }else{
+                                        voiceStatus.value = '未检测到语音';
+                                        log('未检测到语音', 'warning');
+                                    }
+                                };
+                                
+                                recognition.onerror = (event) => {
+                                    log(`语音识别错误: ${event.error}`, 'error');
+                                    voiceRecording.value = false;
+                                    voiceStatus.value = `语音识别错误: ${event.error}`;
+                                };
+                                
+                                log('语音识别初始化成功', 'success');
+                            } catch(error) {
+                                log(`语音识别初始化失败: ${error.message}`, 'error');
+                                voiceStatus.value = '语音识别初始化失败';
+                                return;
+                            }
+                        }
+                        
+                        // 启动语音识别
+                        try {
+                            recognition.start();
+                            log('语音识别已启动', 'success');
+                        } catch(error) {
+                            log(`语音识别启动失败: ${error.message}`, 'error');
+                            voiceRecording.value = false;
+                            voiceStatus.value = '语音识别启动失败';
+                        }
+                    }
+                }
+                
+                // 文本分析
+                function analyzeTestText() {
+                    if (!testText.value.trim()) {
+                        log('请输入文本内容', 'warning');
+                        return;
+                    }
+                    
+                    log(`分析文本: ${testText.value.substring(0, 30)}...`, 'info');
+                    voiceText.value = testText.value;
+                    voiceStatus.value = '文本分析完成（模拟）';
+                    
+                    // 模拟AI分析结果
+                    setTimeout(() => {
+                        log('✅ 文本分析完成', 'success');
+                    }, 1000);
+                }
+                
+                // 初始化日志
+                log('测试页面加载完成', 'success');
+                log('当前时间: ' + new Date().toLocaleString(), 'info');
+                
+                return {
+                    isLoggedIn,
+                    voiceRecording,
+                    voiceStatus,
+                    voiceText,
+                    testText,
+                    logs,
+                    simulateLogin,
+                    checkVue,
+                    checkSpeechAPI,
+                    checkInitFunction,
+                    toggleVoice,
+                    analyzeTestText
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
