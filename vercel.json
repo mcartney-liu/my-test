@@ -1,20 +1,12 @@
 {
-  "builds": [
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/(.*)\\.js",
+      "headers": [
+        { "key": "Content-Type", "value": "application/javascript" }
+      ]
     }
   ]
 }
