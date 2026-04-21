@@ -2,13 +2,23 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1e293b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PM OS">
+  <meta name="description" content="智能项目管理系统 - 随时随地高效管理您的项目">
   <title>PM OS - 您的智能项目管理助手</title>
   <script src="vue3.min.js"></script>
   <!-- Lucide Icons 图标库（本地文件，避免 CDN 加载延迟） -->
   <script src="lucide.min.js"></script>
   <!-- Markdown 渲染库（本地文件） -->
   <script src="marked.min.js"></script>
+  <!-- SheetJS Excel处理库 -->
+  <script src="xlsx.full.min.js"></script>
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 /* Lucide Icons 样式系统 */
 .lucide {
@@ -46,10 +56,125 @@
   align-items: center;
   justify-content: center;
 }
+
+/* ============================================
+   移动端触摸增强 - 触摸反馈动效（Ripple Effect）
+   ============================================ */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transform: scale(0);
+  animation: ripple-anim 0.6s ease-out;
+  pointer-events: none;
+}
+@keyframes ripple-anim {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+/* 按钮按下效果 */
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+/* 卡片触摸反馈 */
+.card-touch {
+  transition: all 0.15s ease;
+}
+.card-touch:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+/* 下拉刷新指示器 */
+.pull-refresh-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--bg) 0%, transparent 100%);
+  z-index: 9999;
+  transform: translateY(-100%);
+  transition: transform 0.3s ease;
+}
+.pull-refresh-indicator.visible {
+  transform: translateY(0);
+}
+.pull-refresh-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.pull-refresh-text {
+  margin-left: 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+/* 触摸高亮 */
+@media(hover: none) and (pointer: coarse) {
+  .btn, .nav-item, .card, .data-card {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active:not(:disabled) {
+    background: var(--bg-hover);
+  }
+}
 /* 按钮内图标 */
 .btn-icon {
   width: 18px;
   height: 18px;
+}
+/* 语言选择器样式 */
+.lang-selector {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+.lang-option:hover {
+  border-color: var(--primary);
+  background: var(--bg-hover);
+}
+.lang-option.active {
+  border-color: var(--primary);
+  background: rgba(139, 92, 246, 0.1);
+}
+.lang-icon {
+  font-size: 24px;
+}
+.lang-label {
+  font-weight: 600;
+  color: var(--text);
+}
+.lang-check {
+  margin-left: auto;
+  color: var(--primary);
+  font-weight: 700;
 }
 /* ============================================
    PM-OS Design System v2.0
@@ -177,6 +302,40 @@
   --glass-bg: rgba(255, 255, 255, 0.8);
   --glass-border: rgba(0, 0, 0, 0.1);
 }
+
+/* ============================================
+   1.2 深色主题 - Dark Theme
+   ============================================ */
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --bg-soft: #1e293b;
+  --bg-card: #1e293b;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 255, 255, 0.08);
+  --card: #1e293b;
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-hint: #64748b;
+
+  --border: #334155;
+  --border-light: #475569;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.6);
+
+  --glass-bg: rgba(30, 41, 59, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   1.3 自动跟随系统主题 - Auto Theme
+   ============================================ */
 /* ============================================
    2. 基础样式 - Base Styles (比例适配增强)
    ============================================ */
@@ -1011,41 +1170,43 @@ textarea.form-input{min-height:100px;resize:vertical}
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:clamp(1rem, 1.5vw, 2rem);
+  padding:clamp(0.625rem, 1vw, 1rem);
   background:var(--glass-bg);
   border:1px solid var(--glass-border);
-  border-radius:clamp(0.75rem, 1vw, 1.25rem);
-  margin-bottom:clamp(1rem, 1.5vw, 2rem);
+  border-radius:clamp(0.5rem, 0.8vw, 0.875rem);
+  margin-bottom:clamp(0.5rem, 1vw, 1rem);
   flex-wrap:wrap;
-  gap:1rem;
+  gap:0.75rem;
   flex-shrink:0;
 }
 .welcome-left h1{
-  font-size:clamp(1.25rem, 2vw, 1.75rem);
+  font-size:clamp(1rem, 1.5vw, 1.375rem);
   font-weight:700;
-  margin:0 0 0.5rem;
+  margin:0 0 0.375rem;
   background:var(--gradient-primary);
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
 }
-.welcome-left p{color:var(--text-muted);margin:0;font-size:clamp(0.75rem, 1vw, 0.9375rem);}
+.welcome-left p{color:var(--text-muted);margin:0;font-size:clamp(0.6875rem, 0.8vw, 0.8125rem);}
 .welcome-left p strong{color:var(--primary);}
 .welcome-right{}
-.quick-stats{display:flex;gap:clamp(0.75rem, 1.5vw, 1.5rem);flex-wrap:wrap;}
-.quick-stat-item{display:flex;align-items:center;gap:0.375rem;font-size:clamp(0.6875rem, 0.9vw, 0.875rem);color:var(--text-muted);}
+.quick-stats{display:flex;gap:clamp(0.5rem, 1vw, 1rem);flex-wrap:wrap;}
+.quick-stat-item{display:flex;align-items:center;gap:0.25rem;font-size:clamp(0.625rem, 0.8vw, 0.75rem);color:var(--text-muted);}
+
+/* 快捷入口横排导航（全局） */
+.shortcuts-grid{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;padding-bottom:2px}
+.shortcuts-grid .active{background:rgba(99,102,241,0.08)!important;border-color:var(--primary)!important}
 /* ============================================
    7.6 仪表盘AI区域 (比例适配 v2.0)
    ============================================ */
 .dashboard-ai-section{
   background:var(--glass-bg);
   border:1px solid var(--glass-border);
-  border-radius:clamp(0.75rem, 1vw, 1.25rem);
-  padding:clamp(1rem, 1.5vw, 2rem);
-  display:flex;
-  flex-direction:column;
-  flex:1;
-  min-height:0;
-  overflow:hidden;
+  border-radius:clamp(0.5rem, 0.8vw, 1rem);
+  padding:clamp(10px, 1.2vw, 16px);
+  flex:none;
+  max-height:420px;
+  overflow-y:auto;
 }
 .ai-chat-messages{min-height:7.5rem;max-height:20rem;overflow-y:auto;}
 .chat-message{margin-bottom:0.75rem;}
@@ -1100,8 +1261,8 @@ textarea.form-input{min-height:100px;resize:vertical}
   min-height:0;
 }
 .stat-card:hover{
-  transform:translateY(-8px) scale(1.02);
-  box-shadow:var(--shadow-lg),0 0 40px rgba(99,102,241,0.2);
+  transform:translateY(-3px);
+  box-shadow:var(--shadow-md),0 0 20px rgba(99,102,241,0.15);
   border-color:var(--primary);
 }
 /* 悬浮时边框发光 */
@@ -2018,6 +2179,11 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
     overscroll-behavior-y:contain;
   }
   .stats-grid{grid-template-columns:repeat(2, 1fr);gap:0.75rem}
+  .risk-health-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .shortcuts-grid{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;align-items:center;padding-bottom:4px;}
+  .dash-welcome{padding:0.75rem!important}
+  .dash-welcome h1{font-size:1.125rem!important}
+  .quick-stats{flex-wrap:wrap;gap:4px}
   .form-row{grid-template-columns:1fr}
   .toolbar{flex-direction:column;gap:0.75rem}
   .toolbar-left{width:100%}
@@ -2215,6 +2381,40 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
 .notif-panel-footer{padding:10px 16px;border-top:1px solid var(--border);text-align:center;}
 .notif-panel-footer button{background:none;border:none;color:var(--primary);font-size:12px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .2s;}
 .notif-panel-footer button:hover{background:rgba(99,102,241,0.08);}
+/* ===== 快捷键帮助弹窗 ===== */
+.shortcut-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s ease;}
+.shortcut-modal{background:var(--card);border:1px solid var(--border);border-radius:16px;width:420px;max-height:80vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:shortcutPop .25s ease;}
+@keyframes shortcutPop{from{opacity:0;transform:scale(0.9) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.shortcut-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);}
+.shortcut-header h3{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:600;margin:0;}
+.shortcut-body{padding:20px 24px;overflow-y:auto;max-height:60vh;}
+.shortcut-group{margin-bottom:20px;}
+.shortcut-group:last-child{margin-bottom:0;}
+.shortcut-cat-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.shortcut-item{display:flex;align-items:center;gap:14px;padding:6px 0;}
+.shortcut-key{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-family:monospace;font-size:12px;font-weight:600;color:var(--primary);white-space:nowrap;min-width:80px;text-align:center;}
+.shortcut-desc{font-size:13px;color:var(--text-secondary);}
+.shortcut-footer{text-align:center;padding:12px 24px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted);}
+.shortcut-footer kbd{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;}
+/* 通知偏好设置 */
+.notify-pref-grid{display:flex;flex-direction:column;gap:12px;}
+.notify-pref-item{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;}
+.notify-pref-item:hover{border-color:var(--primary);box-shadow:0 2px 12px rgba(99,102,241,0.1);}
+.notify-pref-item.active{border-color:var(--primary);background:rgba(99,102,241,0.05);}
+.notify-pref-item>div:nth-child(2){flex:1;}
+.notify-pref-title{font-weight:600;font-size:13px;color:var(--text);}
+.notify-pref-desc{font-size:11px;color:var(--muted);margin-top:2px;}
+.toggle-switch{width:42px;height:24px;border-radius:12px;background:var(--border);position:relative;transition:all .2s;cursor:pointer;flex-shrink:0;}
+.toggle-switch.on{background:var(--primary);}
+.toggle-knob{width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+.toggle-switch.on .toggle-knob{left:20px;}
+.reminder-time-selector{display:flex;gap:8px;flex-wrap:wrap;}
+.reminder-time-btn{padding:6px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;cursor:pointer;transition:all .2s;}
+.reminder-time-btn.active{border-color:var(--primary);background:rgba(99,102,241,0.1);color:var(--primary);font-weight:600;}
+/* 通知偏好设置结束 */
+
+/* 快捷键帮助弹窗结束 */
+
 /* ===== 通知中心样式结束 ===== */
 
 /* ===== Sam：仪表盘自定义 + 数据导出样式 ===== */
@@ -2261,7 +2461,8 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
 /* 数据导出按钮组 */
 .export-group{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .export-dropdown{position:relative;}
-.export-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.export-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;cursor:pointer;transition:all .2s;white-space:nowrap;line-height:1;box-sizing:border-box;}
+.export-btn i,.export-btn svg{display:block;flex-shrink:0;width:14px;height:14px;margin:auto 0;}
 .export-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(99,102,241,0.06);}
 .export-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,0.35);z-index:100;overflow:hidden;animation:notif-slide-down .2s ease;}
 .export-menu-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:background .15s;font-size:13px;color:var(--text);border:none;background:none;width:100%;text-align:left;}
@@ -2382,10 +2583,10 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
 .kanban-card .card-meta{display:flex;flex-wrap:wrap;gap:6px;padding-left:8px;}
 .kanban-card .card-tag{font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.05);color:var(--muted);}
 .kanban-card .card-assignee{font-size:11px;padding:3px 8px;border-radius:6px;background:rgba(99,102,241,0.1);color:var(--primary);display:flex;align-items:center;gap:4px;}
-.kanban-card .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);padding-left:8px;}
+.kanban-card .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);padding-left:8px;gap:8px;}
 .kanban-card .card-date{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;}
 .kanban-card .card-date.overdue{color:var(--danger);}
-.kanban-card .card-progress-mini{width:50px;height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;}
+.kanban-card .card-progress-mini{width:60px;height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;flex-shrink:0;}
 .kanban-card .card-progress-mini .bar{height:100%;border-radius:4px;transition:width .3s;}
 
 /* 看板空列 */
@@ -2496,6 +2697,26 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
 .hours-table tr:hover td{background:rgba(255,255,255,0.02);}
 .hours-bar-mini{width:80px;height:6px;background:rgba(255,255,255,0.06);border-radius:6px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px;}
 .hours-bar-mini .bar{height:100%;border-radius:6px;transition:width .3s;}
+
+/* 仪表盘迷你图表 */
+.dash-charts-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;}
+.dash-chart-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;transition:all .2s;}
+.dash-chart-card:hover{box-shadow:0 4px 12px rgba(0,0,0,0.15);transform:translateY(-1px);}
+.dash-chart-card h4{font-size:12px;font-weight:600;color:var(--text-muted);margin:0 0 8px;display:flex;align-items:center;gap:6px;}
+.dash-chart-card h4 i{width:14px;height:14px;}
+.dash-chart-svg{display:flex;justify-content:center;align-items:center;}
+
+@media(max-width:1200px){
+  .dash-charts-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .dash-charts-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+}
+@media(max-width:480px){
+  .dash-charts-grid{grid-template-columns:1fr}
+}
+
+
 
 /* ===== 批量操作样式结束 ===== */
 
@@ -2734,7 +2955,13 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
     </div>
   </div>
   
-  <div v-else class="app-layout" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+  <div v-else class="app-layout">
+    <!-- 移动端下拉刷新指示器（PC端隐藏） -->
+    <div v-show="isMobile" class="pull-refresh-indicator" :class="{visible:showPullIndicator}" :style="{transform:'translateY('+pullDistance+'px)'}">
+      <div class="pull-refresh-spinner" v-if="isRefreshing"></div>
+      <i v-else data-lucide="refresh-cw" :style="{transform:'rotate('+pullDistance*3.6+'deg)'}" style="width:20px;height:20px;"></i>
+      <span class="pull-refresh-text">{{pullText}}</span>
+    </div>
     <!-- Round 11：移动端侧边栏遮罩 -->
     <div class="mobile-sidebar-overlay" :class="{active:mobileSidebarOpen}" @click="closeMobileSidebar"></div>
 
@@ -2818,8 +3045,26 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
       </nav>
     </aside>
     
-    <main class="main-content">
-      <!-- Round 11：移动端头部栏 -->
+<main class="main-content">
+      <!-- 快捷键帮助弹窗 -->
+      <div v-if="showShortcutHelp" class="shortcut-overlay" @click="showShortcutHelp=false">
+        <div class="shortcut-modal" @click.stop>
+          <div class="shortcut-header">
+            <h3><i data-lucide="keyboard" style="width:18px;height:18px;color:var(--primary);"></i> 键盘快捷键</h3>
+            <button class="btn btn-ghost" @click="showShortcutHelp=false"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+          </div>
+          <div class="shortcut-body">
+            <div v-for="cat in ['导航','操作','界面','帮助']" :key="cat" class="shortcut-group">
+              <div class="shortcut-cat-title">{{cat}}</div>
+              <div v-for="s in shortcuts.filter(x=>x.category===cat)" :key="s.key" class="shortcut-item">
+                <kbd class="shortcut-key">{{s.key}}</kbd>
+                <span class="shortcut-desc">{{s.desc}}</span>
+              </div>
+            </div>
+          </div>
+          <div class="shortcut-footer">按 <kbd>?</kbd> 或 <kbd>Esc</kbd> 关闭</div>
+        </div>
+      </div>
       <div class="mobile-header">
         <button class="hamburger-btn" :class="{active:mobileSidebarOpen}" @click="toggleMobileSidebar">
           <span></span><span></span><span></span>
@@ -2850,10 +3095,56 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
                 <i data-lucide="sun" class="icon-lg"></i>
                 <span>浅色模式</span>
               </div>
+              <div class="theme-option" :class="{active: currentTheme === 'auto'}" @click="setTheme('auto');initTheme()">
+                <i data-lucide="monitor" class="icon-lg"></i>
+                <span>跟随系统</span>
+              </div>
+            </div>
+          </div>
+          <!-- 语言设置 -->
+          <div class="config-section">
+            <h3><i data-lucide="languages" class="icon-md" style="margin-right:8px;vertical-align:middle;"></i>语言设置</h3>
+            <p style="color:var(--text-muted);margin-bottom:16px;">选择您偏好的语言</p>
+            <div class="lang-selector">
+              <div class="lang-option" v-for="lang in langOptions" :key="lang.value" :class="{active: currentLang === lang.value}" @click="switchLanguage(lang.value)">
+                <span class="lang-icon">{{lang.icon}}</span>
+                <span class="lang-label">{{lang.label}}</span>
+                <span class="lang-check" v-if="currentLang === lang.value">✓</span>
+              </div>
+</div>
+          </div>
+          <!-- 通知提醒设置 -->
+          <div class="config-section">
+            <h3><i data-lucide="bell-ring" class="icon-md" style="margin-right:8px;vertical-align:middle;"></i>通知提醒</h3>
+            <p style="color:var(--text-muted);margin-bottom:16px;">设置任务和会议提醒的时间偏好</p>
+            <div class="notify-pref-grid">
+              <div class="notify-pref-item" :class="{active: notifyPrefs.taskDue}" @click="notifyPrefs.taskDue=!notifyPrefs.taskDue">
+                <i data-lucide="calendar-check" style="width:18px;height:18px;color:var(--primary);"></i>
+                <div><div class="notify-pref-title">任务到期提醒</div><div class="notify-pref-desc">任务到期前自动提醒</div></div>
+                <div class="toggle-switch" :class="{on:notifyPrefs.taskDue}"><div class="toggle-knob"></div></div>
+              </div>
+              <div class="notify-pref-item" :class="{active: notifyPrefs.meetingReminder}" @click="notifyPrefs.meetingReminder=!notifyPrefs.meetingReminder">
+                <i data-lucide="video" style="width:18px;height:18px;color:var(--success);"></i>
+                <div><div class="notify-pref-title">会议提前提醒</div><div class="notify-pref-desc">会议开始前提醒您</div></div>
+                <div class="toggle-switch" :class="{on:notifyPrefs.meetingReminder}"><div class="toggle-knob"></div></div>
+              </div>
+              <div class="notify-pref-item" :class="{active: notifyPrefs.dailySummary}" @click="notifyPrefs.dailySummary=!notifyPrefs.dailySummary">
+                <i data-lucide="file-text" style="width:18px;height:18px;color:var(--warning);"></i>
+                <div><div class="notify-pref-title">每日工作摘要</div><div class="notify-pref-desc">每天早上推送工作概览</div></div>
+                <div class="toggle-switch" :class="{on:notifyPrefs.dailySummary}"><div class="toggle-knob"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:16px;" v-if="notifyPrefs.taskDue||notifyPrefs.meetingReminder">
+              <label style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;display:block;">提醒提前时间</label>
+              <div class="reminder-time-selector">
+                <button v-for="opt in [{v:'1h',l:'1小时'},{v:'3h',l:'3小时'},{v:'1d',l:'1天'},{v:'3d',l:'3天'}]" :key="opt.v"
+                  class="reminder-time-btn" :class="{active: notifyPrefs.reminderBefore===opt.v}"
+                  @click="notifyPrefs.reminderBefore=opt.v;saveNotifyPrefs()">{{opt.l}}</button>
+              </div>
             </div>
           </div>
           <div class="config-section">
-            <h3><i data-lucide="bot" class="icon-md" style="margin-right:8px;vertical-align:middle;"></i>智能 AI 分析助手</h3>
+            <h3><i data-luc
             <p style="color:var(--muted);margin-bottom:16px;">输入问题或指令，AI助手将分析并提供处理建议</p>
             <div class="api-key-input">
               <label for="api-key" class="sr-only">智谱AI API Key</label>
@@ -2869,6 +3160,67 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
               <button class="btn btn-secondary" @click="generateDemoData">一键生成演示数据</button>
               <button class="btn btn-danger" @click="clearAllData">清除所有数据</button>
+            </div>
+          </div>
+          <!-- 工作流自动化规则 -->
+          <div class="config-section">
+            <h3><i data-lucide="workflow" class="icon-md" style="margin-right:8px;vertical-align:middle;"></i>工作流自动化</h3>
+            <p style="color:var(--text-muted);margin-bottom:16px;">配置自动执行的业务规则，提升团队效率</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+              <button class="btn btn-primary" @click="showWorkflowPanel=true">
+                <i data-lucide="settings-2" style="width:14px;height:14px;margin-right:6px;"></i>管理规则 ({{workflowRules.length}})
+              </button>
+            </div>
+            <div style="background:var(--bg);border-radius:12px;padding:14px;" v-if="workflowRules.length">
+              <div v-for="rule in workflowRules.slice(0,3)" :key="rule.id" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+                <i :data-lucide="rule.type==='autoStatus'?'refresh-cw':rule.type==='autoNotify'?'bell':rule.type==='autoAssign'?'user-plus':'plus-circle'" style="width:16px;height:16px;" :style="{color:rule.enabled?'var(--primary)':'var(--muted)'}"></i>
+                <span style="flex:1;font-weight:500;" :style="{color:rule.enabled?'var(--text)':'var(--muted)'}">{{rule.name}}</span>
+                <span class="badge" :class="rule.enabled?'badge-success':'badge-gray'">{{rule.enabled?'已启用':'已禁用'}}</span>
+              </div>
+              <div v-if="workflowRules.length>3" style="text-align:center;color:var(--muted);font-size:12px;padding-top:8px;">还有 {{workflowRules.length-3}} 条规则</div>
+            </div>
+          </div>
+          <!-- 实时协作 -->
+          <div class="config-section">
+            <h3><i data-lucide="users" class="icon-md" style="margin-right:8px;vertical-align:middle;"></i>实时协作</h3>
+            <p style="color:var(--text-muted);margin-bottom:16px;">查看团队成员在线状态和实时活动</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+              <button class="btn btn-success" @click="simulateTeamActivity">
+                <i data-lucide="activity" style="width:14px;height:14px;margin-right:6px;"></i>模拟团队活动
+              </button>
+            </div>
+            <div style="background:var(--bg);border-radius:12px;padding:14px;" v-if="recentActivities.length">
+              <div v-for="act in recentActivities.slice(0,5)" :key="act.id" style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;">
+                <div style="width:8px;height:8px;border-radius:50%;" :style="{background:act.type==='create'?'var(--success)':act.type==='edit'?'var(--warning)':'var(--info)'}"></div>
+                <span style="color:var(--muted);">{{act.user}}</span>
+                <span style="flex:1;">{{act.action}}</span>
+                <span style="color:var(--muted);font-size:11px;">{{act.time}}</span>
+              </div>
+            </div>
+          </div>
+          <div class="config-section">
+            <h3><i data-lucide="database" class="icon-md" style="margin-right:8px;vertical-align:middle;"></i>数据管理</h3>
+            <p style="color:var(--text-muted);margin-bottom:16px;">导入导出项目数据，支持JSON备份和Excel格式</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+              <button class="btn btn-primary" @click="exportJSON">
+                <i data-lucide="download" style="width:14px;height:14px;margin-right:6px;"></i>导出JSON备份
+              </button>
+              <button class="btn btn-secondary" @click="triggerImportJSON">
+                <i data-lucide="upload" style="width:14px;height:14px;margin-right:6px;"></i>导入JSON备份
+              </button>
+              <input type="file" ref="jsonFileInput" @change="importJSON" accept=".json" style="display:none;">
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-success" @click="exportProjectsExcel">
+                <i data-lucide="file-spreadsheet" style="width:14px;height:14px;margin-right:6px;"></i>导出项目Excel
+              </button>
+              <button class="btn btn-success" @click="exportTasksExcel">
+                <i data-lucide="file-spreadsheet" style="width:14px;height:14px;margin-right:6px;"></i>导出任务Excel
+              </button>
+              <button class="btn btn-warning" @click="triggerImportExcel">
+                <i data-lucide="file-plus" style="width:14px;height:14px;margin-right:6px;"></i>导入Excel
+              </button>
+              <input type="file" ref="excelFileInput" @change="importExcel" accept=".xlsx,.xls,.csv" style="display:none;">
             </div>
           </div>
           <div class="config-section" style="border-top:1px solid var(--border);padding-top:24px;margin-top:16px;">
@@ -3423,6 +3775,7 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
                   <div class="card-priority" :class="t.priority"></div>
                   <div class="card-title">{{t.name}}</div>
                   <div class="card-meta">
+                    <span v-if="t.type" class="card-tag" style="background:rgba(99,102,241,0.2);color:var(--primary);border:1px solid rgba(99,102,241,0.3);"><i data-lucide="tag" style="width:9px;height:9px;margin-right:2px;"></i>{{t.type}}</span>
                     <span v-if="t.projectId" class="card-tag"><i data-lucide="folder" style="width:10px;height:10px;margin-right:3px;"></i>{{(projects.find(p=>p.id===t.projectId)||{}).name||'未分配'}}</span>
                     <span v-if="t.assignee" class="card-assignee"><i data-lucide="user" style="width:10px;height:10px;"></i>{{t.assignee}}</span>
                     <span class="card-tag" :style="{color:t.priority==='紧急'?'var(--danger)':t.priority==='高'?'#f97316':'var(--muted)'}">{{t.priority}}</span>
@@ -4133,8 +4486,20 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
           </div>
         </div>
 
+        <!-- 快捷入口横排导航 -->
+        <div v-if="dashboardCards.find(c=>c.id==='shortcuts')?.visible" class="shortcuts-grid" style="margin-bottom:10px;">
+          <div v-for="item in [{page:'projects',icon:'folder-open',label:'项目',color:'var(--info)'},{page:'tasks',icon:'check-square',label:'任务',color:'var(--success)'},{page:'customers',icon:'users',label:'客户',color:'var(--primary)'},{page:'issues',icon:'alert-triangle',label:'问题',color:'var(--warning)'},{page:'meetings',icon:'calendar',label:'会议',color:'var(--danger)'},{page:'ai',icon:'bot',label:'AI助手',color:'var(--primary-light)'}]" :key="item.page"
+            @click="currentPage=item.page"
+            :style="{'border-bottom':currentPage===item.page?'2px solid '+item.color:'2px solid transparent','background':currentPage===item.page?'rgba(99,102,241,0.06)':'transparent'}"
+            style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:var(--card);border-radius:8px;cursor:pointer;border:1px solid var(--border);border-bottom-width:2px;transition:all .2s;flex-shrink:0;">
+            <i :data-lucide="item.icon" style="width:16px;height:16px;" :style="{color:item.color}"></i>
+            <span style="font-size:13px;color:var(--text);font-weight:500;">{{item.label}}</span>
+          </div>
+        </div>
+
+        
         <!-- 顶部欢迎栏 -->
-        <div class="dashboard-welcome">
+        <div class="dashboard-welcome dash-welcome" style="margin-bottom:10px;">
           <div class="welcome-left">
             <h1>欢迎回来 👋</h1>
             <p>你有 <strong>{{stats.pendingTasks}}</strong> 个待处理任务，<strong>{{stats.activeProjects}}</strong> 个项目进行中</p>
@@ -4148,31 +4513,59 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
         </div>
         
         <!-- 中间数据统计卡片区 -->
-        <div class="stats-grid" v-if="dashboardCards.find(c=>c.id==='stats')?.visible" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;">
-          <div class="stat-card blue hover-lift" @click="currentPage='projects'" style="cursor:pointer;padding:12px;">
-            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(6,182,212,0.15) 0%,rgba(0,242,254,0.15) 100%);width:32px;height:32px;"><i data-lucide="folder-open" style="width:16px;height:16px;"></i></div>
-            <div class="stat-value" style="font-size:20px;">{{enhancedStats.totalProjects}}</div>
-            <div class="stat-label" style="font-size:12px;">总项目 / <span style="color:var(--success)">进行中{{enhancedStats.activeProjects}}</span></div>
+        <div class="stats-grid" v-if="dashboardCards.find(c=>c.id==='stats')?.visible" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
+          <div class="stat-card blue hover-lift" @click="currentPage='projects'" style="cursor:pointer;padding:10px;">
+            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(6,182,212,0.15) 0%,rgba(0,242,254,0.15) 100%);width:28px;height:28px;"><i data-lucide="folder-open" style="width:14px;height:14px;"></i></div>
+            <div class="stat-value" style="font-size:18px;">{{enhancedStats.totalProjects}}</div>
+            <div class="stat-label" style="font-size:11px;">总项目 / <span style="color:var(--success)">进行中{{enhancedStats.activeProjects}}</span></div>
           </div>
-          <div class="stat-card green hover-lift" @click="currentPage='tasks'" style="cursor:pointer;padding:12px;">
-            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(16,185,129,0.15) 0%,rgba(52,239,125,0.15) 100%);width:32px;height:32px;"><i data-lucide="list-todo" style="width:16px;height:16px;"></i></div>
-            <div class="stat-value" style="font-size:20px;background:var(--gradient-success);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{enhancedStats.pendingTasks}}</div>
-            <div class="stat-label" style="font-size:12px;">待处理任务 / <span style="color:var(--danger)">逾期{{enhancedStats.overdueTasks}}</span></div>
+          <div class="stat-card green hover-lift" @click="currentPage='tasks'" style="cursor:pointer;padding:10px;">
+            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(16,185,129,0.15) 0%,rgba(52,239,125,0.15) 100%);width:28px;height:28px;"><i data-lucide="list-todo" style="width:14px;height:14px;"></i></div>
+            <div class="stat-value" style="font-size:18px;background:var(--gradient-success);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{enhancedStats.pendingTasks}}</div>
+            <div class="stat-label" style="font-size:11px;">待处理 / <span style="color:var(--danger)">逾期{{enhancedStats.overdueTasks}}</span></div>
           </div>
-          <div class="stat-card purple hover-lift" @click="currentPage='team'" style="cursor:pointer;padding:12px;">
-            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(139,92,246,0.15) 0%,rgba(167,139,250,0.15) 100%);width:32px;height:32px;"><i data-lucide="users" style="width:16px;height:16px;"></i></div>
-            <div class="stat-value" style="font-size:20px;background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{enhancedStats.memberCount}}</div>
-            <div class="stat-label" style="font-size:12px;">在职成员</div>
+          <div class="stat-card purple hover-lift" @click="currentPage='team'" style="cursor:pointer;padding:10px;">
+            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(139,92,246,0.15) 0%,rgba(167,139,250,0.15) 100%);width:28px;height:28px;"><i data-lucide="users" style="width:14px;height:14px;"></i></div>
+            <div class="stat-value" style="font-size:18px;background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{enhancedStats.memberCount}}</div>
+            <div class="stat-label" style="font-size:11px;">在职成员</div>
           </div>
-          <div class="stat-card pink hover-lift" @click="currentPage='issues'" style="cursor:pointer;padding:12px;">
-            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(250,112,154,0.15) 0%,rgba(254,225,64,0.15) 100%);width:32px;height:32px;"><i data-lucide="alert-triangle" style="width:16px;height:16px;"></i></div>
-            <div class="stat-value" style="font-size:20px;background:var(--gradient-warning);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{enhancedStats.highRiskCount}}</div>
-            <div class="stat-label" style="font-size:12px;">高风险预警 / <span style="color:var(--warning)">问题{{enhancedStats.openIssues}}</span></div>
+          <div class="stat-card pink hover-lift" @click="currentPage='issues'" style="cursor:pointer;padding:10px;">
+            <div class="stat-icon" style="background:linear-gradient(135deg,rgba(250,112,154,0.15) 0%,rgba(254,225,64,0.15) 100%);width:28px;height:28px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i></div>
+            <div class="stat-value" style="font-size:18px;background:var(--gradient-warning);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">{{enhancedStats.highRiskCount}}</div>
+            <div class="stat-label" style="font-size:11px;">高风险 / <span style="color:var(--warning)">问题{{enhancedStats.openIssues}}</span></div>
+          </div>
+        
+
+        <!-- 仪表盘可视化图表区 -->
+        <div v-if="dashboardCards.find(c=>c.id==='charts')?.visible" class="dash-charts-grid">
+          <!-- 任务状态饼图 -->
+          <div class="dash-chart-card">
+            <h4><i data-lucide="pie-chart" style="color:var(--primary);"></i>任务状态分布</h4>
+            <div class="dash-chart-svg">
+              <svg width="160" height="160" viewBox="0 0 160 160" v-html="miniPieSvg(dashTaskStatusPie)"></svg>
+            </div>
+          </div>
+          <!-- 项目进度条形图 -->
+          <div class="dash-chart-card">
+            <h4><i data-lucide="bar-chart-2" style="color:var(--info);"></i>项目进度</h4>
+            <div class="dash-chart-svg" v-html="dashProjectProgressBar.length?miniBarSvg(dashProjectProgressBar.map(d=>({label:d.label,value:d.value}))):'<div style=color:var(--muted);font-size:12px;text-align:center;padding:40px 0>暂无项目数据</div>'"></div>
+          </div>
+          <!-- 本周趋势折线图 -->
+          <div class="dash-chart-card">
+            <h4><i data-lucide="trending-up" style="color:var(--success);"></i>本周趋势</h4>
+            <div class="dash-chart-svg" v-html="miniLineSvg(dashWeeklyTrendLine)"></div>
+          </div>
+          <!-- 团队工作量分布 -->
+          <div class="dash-chart-card">
+            <h4><i data-lucide="users" style="color:var(--warning);"></i>团队工作量</h4>
+            <div class="dash-chart-svg" v-html="dashTeamWorkloadBar.length?miniTeamSvg(dashTeamWorkloadBar.map(d=>({label:d.label,value:d.value}))):'<div style=color:var(--muted);font-size:12px;text-align:center;padding:40px 0>暂无成员数据</div>'"></div>
           </div>
         </div>
 
-        <!-- Paul：风险预警面板 + 项目健康度 -->
-        <div v-if="dashboardCards.find(c=>c.id==='risk')?.visible" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" >
+</div>
+
+        <!-- Paul：风险预警面板 + 项目健康度 (移动端单列) -->
+        <div v-if="dashboardCards.find(c=>c.id==='risk')?.visible" class="risk-health-grid" style="margin-bottom:10px;" >
           <!-- 风险预警 -->
           <div v-if="projectRisks.length>0" style="background:var(--card);border-radius:var(--radius);padding:18px;border:1px solid var(--border);">
             <h4 style="margin:0 0 14px;display:flex;align-items:center;gap:8px;color:var(--warning);">
@@ -4212,26 +4605,14 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
           </div>
         </div>
         
-        <!-- Paul：今日快捷入口 -->
-        <div v-if="dashboardCards.find(c=>c.id==='shortcuts')?.visible" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px;">
-          <div v-for="item in [{page:'projects',icon:'folder-open',label:'项目',color:'var(--info)'},{page:'tasks',icon:'check-square',label:'任务',color:'var(--success)'},{page:'customers',icon:'users',label:'客户',color:'var(--primary)'},{page:'issues',icon:'alert-triangle',label:'问题',color:'var(--warning)'},{page:'meetings',icon:'calendar',label:'会议',color:'var(--danger)'},{page:'ai',icon:'bot',label:'AI助手',color:'var(--primary-light)'}]" :key="item.page"
-            @click="currentPage=item.page"
-            style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;background:var(--card);border-radius:12px;cursor:pointer;border:1px solid var(--border);transition:all .2s;"
-            @mouseover="$event.currentTarget.style.background='var(--bg-hover)';$event.currentTarget.style.borderColor=item.color"
-            @mouseout="$event.currentTarget.style.background='var(--card)';$event.currentTarget.style.borderColor='var(--border)'">
-            <i :data-lucide="item.icon" style="width:20px;height:20px;" :style="{color:item.color}"></i>
-            <span style="font-size:12px;color:var(--text);">{{item.label}}</span>
-          </div>
-        </div>
-
         <!-- 底部 AI 数据识别区 -->
-        <div class="dashboard-ai-section" v-if="dashboardCards.find(c=>c.id==='ai')?.visible" style="flex:1;display:flex;flex-direction:column;">
-          <h3 style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        <div class="dashboard-ai-section" v-if="dashboardCards.find(c=>c.id==='ai')?.visible" style="display:flex;flex-direction:column;">
+          <h3 style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
             <i data-lucide="scan" style="color:var(--primary);"></i> AI 数据识别录入
           </h3>
           
           <!-- 输入记录按钮 -->
-          <div style="margin-bottom:12px;">
+          <div style="margin-bottom:8px;">
             <button @click="showInputHistory=!showInputHistory" style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:13px;">
               <i data-lucide="history" style="width:14px;height:14px;"></i>
               输入记录 ({{inputHistory.length}}条)
@@ -4265,7 +4646,7 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
             <span class="breathe">● 录音中...</span> {{voiceStatus}}
           </div>
           <!-- 仪表盘AI分析结果展示 -->
-          <div v-if="aiResult" style="margin-top:16px;padding:16px;background:linear-gradient(135deg,rgba(16,185,129,0.1) 0%,rgba(52,239,125,0.05) 100%);border-radius:12px;border:1px solid var(--primary);flex:1;overflow-y:auto;">
+          <div v-if="aiResult" style="margin-top:10px;padding:12px;background:linear-gradient(135deg,rgba(16,185,129,0.1) 0%,rgba(52,239,125,0.05) 100%);border-radius:12px;border:1px solid var(--primary);flex:1;overflow-y:auto;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <h4 style="color:var(--primary);margin:0;">🎯 AI 识别结果</h4>
               <button @click="clearTextInput" style="background:none;border:none;color:var(--muted);cursor:pointer;">✕</button>
@@ -4302,7 +4683,70 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
             <div class="search-box"><span class="icon">搜索</span><input type="text" v-model="searchKeyword" placeholder="搜索项目名称..." id="search-project" name="searchProject"></div>
             <select class="filter-select" v-model="statusFilter" id="project-status-filter" name="projectStatusFilter"><option value="">全部状态</option><option>待处理</option><option>进行中</option><option>暂停中</option><option>已完成</option></select>
           </div>
-          <button class="btn btn-primary" @click="openModal('project')">+ 新建项目</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" @click="showProjectTemplatePanel=!showProjectTemplatePanel">
+              <i data-lucide="layout-template" style="width:14px;height:14px;margin-right:6px;"></i>项目模板
+            </button>
+            <button class="btn btn-primary" @click="openModal('project')">+ 新建项目</button>
+          </div>
+        </div>
+
+        <!-- 项目模板面板 -->
+        <div class="template-panel" v-if="showProjectTemplatePanel">
+          <div class="template-panel-header">
+            <h3><i data-lucide="layout-template" style="width:16px;height:16px;margin-right:6px;vertical-align:middle;"></i>项目模板</h3>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm btn-secondary" @click="openProjectTemplateForm()"><i data-lucide="plus" style="width:12px;height:12px;margin-right:4px;"></i>新建模板</button>
+              <button class="btn btn-sm btn-secondary" @click="showProjectTemplatePanel=false"><i data-lucide="x" style="width:12px;height:12px;"></i></button>
+            </div>
+          </div>
+          <!-- 新建/编辑模板表单 -->
+          <div v-if="projectTemplateForm.name||editingProjectTemplateId!==null" style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="form-group"><label>模板名称</label><input type="text" v-model="projectTemplateForm.name" class="form-input" placeholder="例如：软件开发项目"></div>
+              <div class="form-group"><label>项目类型</label><select v-model="projectTemplateForm.projectType" class="form-input"><option>软件研发</option><option>营销活动</option><option>产品设计</option><option>咨询服务</option><option>工程建设</option><option>其他</option></select></div>
+              <div class="form-group"><label>默认预算（万）</label><input type="number" v-model="projectTemplateForm.defaultBudget" class="form-input" placeholder="100"></div>
+              <div class="form-group"><label>预计工期（天）</label><input type="number" v-model="projectTemplateForm.duration" class="form-input" placeholder="90"></div>
+            </div>
+            <div class="form-group"><label>模板描述</label><textarea v-model="projectTemplateForm.description" class="form-input" rows="2" placeholder="模板说明"></textarea></div>
+            <!-- 预设任务 -->
+            <div class="form-group">
+              <label>预设任务（每行一个，格式：任务名|优先级|负责人）</label>
+              <textarea v-model="projectTemplateForm.tasksText" class="form-input" rows="4" placeholder="需求调研|高|张三&#10;方案设计|高|李四&#10;开发实现|中|王五"></textarea>
+            </div>
+            <!-- 预设里程碑 -->
+            <div class="form-group">
+              <label>预设里程碑（每行一个，格式：里程碑名|天数偏移）</label>
+              <textarea v-model="projectTemplateForm.milestonesText" class="form-input" rows="3" placeholder="需求评审|7&#10;设计定稿|21&#10;开发完成|60"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="btn btn-secondary btn-sm" @click="cancelProjectTemplateForm">取消</button>
+              <button class="btn btn-primary btn-sm" @click="saveProjectTemplate">保存模板</button>
+            </div>
+          </div>
+          <!-- 模板卡片列表 -->
+          <div class="template-grid" v-if="projectTemplates.length">
+            <div v-for="tpl in projectTemplates" :key="tpl.id" class="template-card">
+              <div class="tpl-actions">
+                <button class="btn btn-secondary btn-sm" style="padding:4px 6px;" @click.stop="openProjectTemplateForm(tpl)"><i data-lucide="pencil" style="width:10px;height:10px;"></i></button>
+                <button class="btn btn-secondary btn-sm" style="padding:4px 6px;color:var(--danger);" @click.stop="deleteProjectTemplate(tpl.id)"><i data-lucide="trash-2" style="width:10px;height:10px;"></i></button>
+              </div>
+              <div class="tpl-name">{{tpl.name}}</div>
+              <div class="tpl-desc">{{tpl.description||'暂无描述'}}</div>
+              <div class="tpl-meta">
+                <span class="tpl-tag">{{tpl.projectType}}</span>
+                <span class="tpl-tag">{{tpl.tasks.length}}任务</span>
+                <span class="tpl-tag">{{tpl.milestones.length}}里程碑</span>
+              </div>
+              <div style="margin-top:10px;">
+                <button class="btn btn-primary btn-sm" style="width:100%;" @click="applyProjectTemplate(tpl)"><i data-lucide="plus" style="width:10px;height:10px;margin-right:4px;"></i>使用模板创建项目</button>
+              </div>
+            </div>
+          </div>
+          <div v-else style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">
+            <i data-lucide="layout-template" style="width:32px;height:32px;opacity:0.3;margin-bottom:8px;display:inline-block;"></i>
+            <p>暂无项目模板，点击「新建模板」创建常用项目模板</p>
+          </div>
         </div>
         <div class="data-grid" v-if="filteredProjects.length" style="display:flex;flex-wrap:wrap;gap:20px;">
           <div v-for="p in filteredProjects" :key="p.id" @click="viewProject(p)" style="width:calc(33.333% - 14px);min-width:280px;background:#1e293b;border-radius:20px;padding:22px;box-shadow:0 2px 8px rgba(0,0,0,0.3);cursor:pointer;border:1px solid #334155;transition:all .2s;" @mouseover="$event.currentTarget.style.transform='translateY(-3px)';$event.currentTarget.style.boxShadow='0 8px 24px rgba(139,92,246,0.2)'" @mouseout="$event.currentTarget.style.transform='';$event.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'">
@@ -5045,22 +5489,40 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
       <!-- Task Detail View -->
       <div v-if="modalType==='task' && modalTitle==='编辑任务'" class="detail-view">
         <div style="text-align:center;margin-bottom:24px;">
-          <div class="emoji-icon"><i data-lucide="check-circle" class="icon-2xl" style="color:var(--success);"></i></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
+            <span v-if="formData.type" class="badge badge-gray">{{formData.type}}</span>
+            <span class="badge" :class="getPriorityBadge(formData.priority)">{{formData.priority||'无'}}</span>
+          </div>
           <h3 style="font-size:22px;font-weight:700;margin-bottom:10px;">{{formData.name||'暂无标题'}}</h3>
-          <span class="badge" :class="getPriorityBadge(formData.priority)">{{formData.priority||'无'}}</span>
         </div>
         <div class="detail-grid">
           <div class="detail-item hover-lift" style="padding:16px 20px;background:linear-gradient(135deg,rgba(99,102,241,0.05) 0%,rgba(129,140,248,0.05) 100%);border-radius:var(--radius);display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">负责人</div><div style="font-weight:600;">{{formData.assignee||'无'}}</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">状态</div><div style="font-weight:600;">{{formData.status||'待处理'}}</div>
+            <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px;">负责人</div><div style="font-weight:600;">{{formData.assignee||'无'}}</div></div>
+            <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px;">状态</div><div style="font-weight:600;">{{formData.status||'待处理'}}</div></div>
+            <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px;">开始日期</div><div style="font-weight:600;">{{formData.startDate||'未设置'}}</div></div>
+            <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px;">截止日期</div><div style="font-weight:600;">{{formData.dueDate||'未设置'}}</div></div>
+            <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px;">预估工时</div><div style="font-weight:600;">{{formData.estimatedHours||0}}h</div></div>
+            <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px;">实际工时</div><div style="font-weight:600;">{{formData.actualHours||0}}h</div></div>
           </div>
-          <div class="detail-item hover-lift" style="padding:16px 20px;background:linear-gradient(135deg,rgba(245,158,11,0.05) 0%,rgba(254,225,64,0.05) 100%);border-radius:var(--radius);">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">截止日期</div>
-            <div style="font-weight:600;font-size:16px;">{{formData.dueDate||'暂无'}}</div>
+          <div v-if="formData.projectId" class="detail-item hover-lift" style="padding:14px 16px;background:var(--bg);border-radius:var(--radius);display:flex;align-items:center;gap:8px;">
+            <i data-lucide="folder" style="width:14px;height:14px;color:var(--primary);"></i>
+            <div><div style="font-size:11px;color:var(--muted);">关联项目</div><div style="font-weight:600;font-size:13px;">{{getProjectName(formData.projectId)}}</div></div>
           </div>
-          <div v-if="formData.description" class="detail-item hover-lift" style="padding:16px 20px;background:var(--bg);border-radius:var(--radius);">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">任务描述</div>
-            <div style="line-height:1.7;">{{formData.description}}</div>
+          <div v-if="formData.tags" class="detail-item hover-lift" style="padding:14px 16px;background:var(--bg);border-radius:var(--radius);">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">标签</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <span v-for="tag in (formData.tags||'').split(',')" :key="tag" style="padding:3px 10px;background:rgba(99,102,241,0.1);color:var(--primary);border-radius:20px;font-size:11px;">{{tag.trim()}}</span>
+            </div>
+          </div>
+          <div v-if="formData.description" class="detail-item hover-lift" style="padding:14px 16px;background:var(--bg);border-radius:var(--radius);">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">任务描述</div>
+            <div style="line-height:1.7;font-size:13px;">{{formData.description}}</div>
+          </div>
+          <div v-if="formData.checkItems" class="detail-item hover-lift" style="padding:14px 16px;background:var(--bg);border-radius:var(--radius);">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">检查清单</div>
+            <div v-for="(item,idx) in (formData.checkItems||'').split('\n')" :key="idx" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;">
+              <i data-lucide="circle" style="width:14px;height:14px;color:var(--muted);"></i>{{item.trim()}}
+            </div>
           </div>
         </div>
         <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);display:flex;gap:12px;justify-content:flex-end;">
@@ -5073,36 +5535,53 @@ div.data-card-subtitle{font-size:0.75rem!important;color:var(--text-muted)!impor
       <form v-if="modalType==='task' && modalTitle==='编辑任务'" @submit.prevent="saveTask">
         <div class="form-group"><label for="task-name-edit">任务名称*</label><input type="text" v-model="formData.name" class="form-input" required id="task-name-edit" name="taskName"></div>
         <div class="form-row">
+          <div class="form-group"><label for="task-type-edit">任务类型</label><select v-model="formData.type" class="form-input" id="task-type-edit" name="taskType"><option value="">请选择</option><option>开发</option><option>需求</option><option>交付</option><option>运维</option><option>会议</option><option>其他</option></select></div>
           <div class="form-group"><label for="task-status-edit">状态</label><select v-model="formData.status" class="form-input" id="task-status-edit" name="taskStatus"><option>待处理</option><option>进行中</option><option>已完成</option></select></div>
-          <div class="form-group"><label for="task-priority-edit">优先级</label><select v-model="formData.priority" class="form-input" id="task-priority-edit" name="taskPriority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label for="task-assignee-edit">负责人</label><input type="text" v-model="formData.assignee" class="form-input" id="task-assignee-edit" name="taskAssignee"></div>
-          <div class="form-group"><label for="task-due-date-edit">截止期</label><input type="date" v-model="formData.dueDate" class="form-input" id="task-due-date-edit" name="taskDueDate"></div>
+          <div class="form-group"><label for="task-priority-edit">优先级</label><select v-model="formData.priority" class="form-input" id="task-priority-edit" name="taskPriority"><option>紧急</option><option>高</option><option>中</option><option>低</option><option>可延后</option></select></div>
+          <div class="form-group"><label for="task-project-edit">关联项目</label><select v-model="formData.projectId" class="form-input" id="task-project-edit" name="taskProject"><option value="">无关联</option><option v-for="p in projects" :key="p.id" :value="p.id">{{p.name}}</option></select></div>
         </div>
-        <div class="form-group"><label for="task-description-edit">任务描述</label><textarea v-model="formData.description" class="form-input" id="task-description-edit" name="taskDescription"></textarea></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" @click="closeModal">保存</button><button type="submit" class="btn btn-primary">提交</button></div>
+        <div class="form-row">
+          <div class="form-group"><label for="task-assignee-edit">负责人</label><input type="text" v-model="formData.assignee" class="form-input" id="task-assignee-edit" name="taskAssignee" list="assignee-list-edit"><datalist id="assignee-list-edit"><option v-for="m in teamMembers" :key="m.id" :value="m.name"/></datalist></div>
+          <div class="form-group"><label for="task-due-date-edit">截止日期</label><input type="date" v-model="formData.dueDate" class="form-input" id="task-due-date-edit" name="taskDueDate"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label for="task-start-date-edit">开始日期</label><input type="date" v-model="formData.startDate" class="form-input" id="task-start-date-edit" name="taskStartDate"></div>
+          <div class="form-group"><label for="task-progress-edit">进度 (%)</label><input type="number" v-model="formData.progress" class="form-input" id="task-progress-edit" name="taskProgress" min="0" max="100"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label for="task-est-hours-edit">预估工时（h）</label><input type="number" v-model="formData.estimatedHours" class="form-input" id="task-est-hours-edit" name="taskEstHours" min="0" placeholder="0"></div>
+          <div class="form-group"><label for="task-act-hours-edit">实际工时（h）</label><input type="number" v-model="formData.actualHours" class="form-input" id="task-act-hours-edit" name="taskActHours" min="0" placeholder="0"></div>
+        </div>
+        <div class="form-group"><label for="task-tags-edit">标签（逗号分隔）</label><input type="text" v-model="formData.tags" class="form-input" id="task-tags-edit" name="taskTags" placeholder="例如：前端,登录模块,bug"></div>
+        <div class="form-group"><label for="task-description-edit">任务描述</label><textarea v-model="formData.description" class="form-input" id="task-description-edit" name="taskDescription" rows="3" placeholder="详细描述任务内容、背景、目标..."></textarea></div>
+        <div class="form-group"><label for="task-checkitems-edit">检查清单（每行一项）</label><textarea v-model="formData.checkItems" class="form-input" id="task-checkitems-edit" name="taskCheckItems" rows="3" placeholder="检查项1&#10;检查项2&#10;检查项3"></textarea></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" @click="closeModal">取消</button><button type="submit" class="btn btn-primary">保存修改</button></div>
       </form>
 
       <!-- Task Add Form -->
       <form v-if="modalType==='task' && modalTitle==='新建任务'" @submit.prevent="saveTask">
         <div class="form-group"><label for="task-name-add">任务名称*</label><input type="text" v-model="formData.name" class="form-input" required id="task-name-add" name="taskName"></div>
         <div class="form-row">
-          <div class="form-group"><label for="task-status-add">状态</label><select v-model="formData.status" class="form-input" id="task-status-add" name="taskStatus"><option>待处理</option><option>进行中</option><option>已完成</option></select></div>
-          <div class="form-group"><label for="task-priority-add">优先级</label><select v-model="formData.priority" class="form-input" id="task-priority-add" name="taskPriority"><option>紧急</option><option>高</option><option>中</option><option>低</option></select></div>
+          <div class="form-group"><label for="task-type-add">任务类型</label><select v-model="formData.type" class="form-input" id="task-type-add" name="taskType"><option value="">请选择</option><option>开发</option><option>需求</option><option>交付</option><option>运维</option><option>会议</option><option>其他</option></select></div>
+          <div class="form-group"><label for="task-priority-add">优先级</label><select v-model="formData.priority" class="form-input" id="task-priority-add" name="taskPriority"><option>紧急</option><option>高</option><option>中</option><option>低</option><option>可延后</option></select></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label for="task-assignee-add">负责人</label><input type="text" v-model="formData.assignee" class="form-input" id="task-assignee-add" name="taskAssignee"></div>
-          <div class="form-group"><label for="task-due-date-add">截止期</label><input type="date" v-model="formData.dueDate" class="form-input" id="task-due-date-add" name="taskDueDate"></div>
+          <div class="form-group"><label for="task-assignee-add">负责人</label><input type="text" v-model="formData.assignee" class="form-input" id="task-assignee-add" name="taskAssignee" list="assignee-list-add"><datalist id="assignee-list-add"><option v-for="m in teamMembers" :key="m.id" :value="m.name"/></datalist></div>
+          <div class="form-group"><label for="task-due-date-add">截止日期</label><input type="date" v-model="formData.dueDate" class="form-input" id="task-due-date-add" name="taskDueDate"></div>
         </div>
-        <!-- 工时输入 -->
-        <div class="form-row" v-if="formData.id">
-          <div class="form-group"><label>预估工时（小时）</label><input type="number" :value="taskHoursData[formData.id]?.estimated||0" @input="updateTaskHours(formData.id,'estimated',$event.target.value)" class="form-input" min="0"></div>
-          <div class="form-group"><label>实际工时（小时）</label><input type="number" :value="taskHoursData[formData.id]?.actual||0" @input="updateTaskHours(formData.id,'actual',$event.target.value)" class="form-input" min="0"></div>
+        <div class="form-row">
+          <div class="form-group"><label for="task-project-add">关联项目</label><select v-model="formData.projectId" class="form-input" id="task-project-add" name="taskProject"><option value="">无关联</option><option v-for="p in projects" :key="p.id" :value="p.id">{{p.name}}</option></select></div>
+          <div class="form-group"><label for="task-start-date-add">开始日期</label><input type="date" v-model="formData.startDate" class="form-input" id="task-start-date-add" name="taskStartDate"></div>
         </div>
-        <div class="form-group"><label for="task-description-add">任务描述</label><textarea v-model="formData.description" class="form-input" id="task-description-add" name="taskDescription"></textarea></div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" @click="closeModal">保存</button><button type="submit" class="btn btn-primary">提交</button></div>
+        <div class="form-group"><label for="task-tags-add">标签（逗号分隔）</label><input type="text" v-model="formData.tags" class="form-input" id="task-tags-add" name="taskTags" placeholder="例如：前端,登录模块"></div>
+        <div class="form-group"><label for="task-description-add">任务描述</label><textarea v-model="formData.description" class="form-input" id="task-description-add" name="taskDescription" rows="3" placeholder="详细描述任务内容、背景、目标..."></textarea></div>
+        <div class="form-group"><label for="task-checkitems-add">检查清单（每行一项）</label><textarea v-model="formData.checkItems" class="form-input" id="task-checkitems-add" name="taskCheckItems" rows="3" placeholder="检查项1&#10;检查项2&#10;检查项3"></textarea></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" @click="closeModal">取消</button><button type="submit" class="btn btn-primary">提交任务</button></div>
       </form>
+
+      
 
       <!-- Customer Detail View -->
       <div v-if="modalType==='customer' && modalTitle==='客户详情'" class="customer-detail detail-view">
@@ -5510,16 +5989,13 @@ window.addEventListener('error', function(event) {
 // 检测语音输入页面是否正常工作
 function testVoicePage() {
   try {
-    console.log('语音输入页面诊断...');
     // 测试Vue是否正常工作
     if (!window.Vue) throw new Error('Vue未加载');
-    console.log('✅ Vue加载正常');
     
     // 测试语音识别API是否可用
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
       console.warn('⚠️ 浏览器不支持语音识别API');
     } else {
-      console.log('✅ 浏览器支持语音识别API');
     }
     
     return true;
@@ -5533,6 +6009,244 @@ const{createApp,ref,reactive,computed,onMounted,onUpdated,nextTick,watch}=Vue;
 
 const app=createApp({
   setup(){
+    // ===== Will：i18n 多语言支持 =====
+    const currentLang=ref(localStorage.getItem('pmos_lang')||'zh-CN');
+    const langOptions=[
+      {value:'zh-CN',label:'简体中文',icon:'🇨🇳'},
+      {value:'en-US',label:'English',icon:'🇺🇸'},
+    ];
+    
+    // 语言包
+    const i18nMessages={
+      'zh-CN':{
+        // 通用
+        app:{title:'PM OS',subtitle:'项目管理平台'},
+        common:{
+          add:'添加',edit:'编辑',delete:'删除',save:'保存',cancel:'取消',
+          confirm:'确认',search:'搜索',filter:'筛选',all:'全部',none:'无',
+          status:'状态',action:'操作',detail:'详情',desc:'描述',time:'时间',
+          create:'创建',update:'更新',loading:'加载中...',success:'成功',
+          error:'错误',warning:'警告',info:'提示',yes:'是',no:'否'
+        },
+        // 导航菜单
+        nav:{
+          dashboard:'仪表盘',projects:'项目管理',tasks:'任务管理',
+          kanban:'看板视图',team:'团队管理',customers:'客户管理',
+          meetings:'会议记录',files:'文件管理',issues:'问题风险',
+          experiences:'知识库',capabilities:'能力库',reports:'报表中心',
+          settings:'系统设置',ai:'AI助手',diary:'工作日记',
+          userMgmt:'用户管理',auditLog:'审计日志'
+        },
+        // 页面标题
+        page:{
+          projects:{title:'项目管理',desc:'统一管理所有项目，实时跟踪项目进度'},
+          tasks:{title:'任务管理',desc:'管理项目任务，分配责任人，跟踪完成情况'},
+          kanban:{title:'看板视图',desc:'可视化任务流转，拖拽更新状态'},
+          team:{title:'人员管理',desc:'统一管理项目参与人员，记录人员信息'},
+          customers:{title:'客户管理',desc:'管理客户信息和合作项目'},
+          meetings:{title:'会议记录',desc:'管理和追踪项目会议'},
+          files:{title:'文件管理',desc:'统一管理项目文档和附件'},
+          issues:{title:'问题风险管理',desc:'统一管理问题和风险'},
+          experiences:{title:'知识库',desc:'项目经验沉淀与复用'},
+          capabilities:{title:'能力库',desc:'建设团队能力矩阵'},
+          reports:{title:'报表中心',desc:'数据可视化分析与决策支持'},
+          settings:{title:'系统设置',desc:'配置系统参数和个人偏好'},
+          aiChat:{title:'AI 智能助手',desc:'智能对话，自动识别数据'},
+          dashboard:{title:'仪表盘',desc:'数据概览与快捷操作'}
+        },
+        // 设置页
+        settings:{
+          theme:'主题设置',dark:'深色模式',light:'浅色模式',
+          aiConfig:'AI 配置',apiKey:'智谱AI API Key',apiKeyPlaceholder:'请输入API Key',
+          dataManage:'数据管理',exportJSON:'导出JSON备份',importJSON:'导入JSON备份',
+          exportExcel:'导出Excel',demoData:'生成演示数据',clearData:'清空所有数据',
+          language:'语言设置',selectLang:'选择语言',
+          about:'关于',version:'版本',author:'作者'
+        },
+        // 表单字段
+        field:{
+          name:'名称',title:'标题',status:'状态',priority:'优先级',
+          progress:'进度',budget:'预算',startDate:'开始日期',
+          endDate:'结束日期',assignee:'负责人',dueDate:'截止日期',
+          client:'客户',type:'类型',description:'描述'
+        },
+        // 状态标签
+        statusLabel:{
+          pending:'待处理',inProgress:'进行中',completed:'已完成',
+          cancelled:'已取消',overdue:'已逾期'
+        },
+        // 优先级
+        priorityLabel:{
+          high:'高',medium:'中',low:'低'
+        },
+        // 空状态
+        empty:{
+          projects:'暂无项目',tasks:'暂无任务',team:'暂无人员',
+          customers:'暂无客户',meetings:'暂无会议',files:'暂无文件',
+          issues:'暂无问题',experiences:'暂无经验',capabilities:'暂无能力',
+          noData:'暂无数据'
+        },
+        // 提示消息
+        toast:{
+          saveSuccess:'保存成功',saveFailed:'保存失败',
+          deleteConfirm:'确定要删除吗？',deleteSuccess:'删除成功',
+          importSuccess:'导入成功',importFailed:'导入失败',
+          exportSuccess:'导出成功',exportFailed:'导出失败',
+          loginSuccess:'登录成功',loginFailed:'用户名或密码错误',
+          apiKeySaved:'API Key 已保存',demoGenerated:'演示数据已生成',
+          dataCleared:'数据已清空'
+        },
+        // 登录页
+        login:{
+          title:'PM OS',subtitle:'项目管理平台',
+          username:'用户名',usernamePlaceholder:'请输入用户名',
+          password:'密码',passwordPlaceholder:'请输入密码 (admin123)',
+          submit:'登录系统'
+        },
+        // 统计卡片
+        stats:{
+          totalProjects:'总项目数',activeProjects:'进行中',
+          totalTasks:'总任务数',pendingTasks:'待处理',
+          totalMembers:'团队人数',totalCustomers:'客户数',
+          totalBudget:'总预算',totalCost:'总成本'
+        }
+      },
+      'en-US':{
+        // Common
+        app:{title:'PM OS',subtitle:'Project Management Platform'},
+        common:{
+          add:'Add',edit:'Edit',delete:'Delete',save:'Save',cancel:'Cancel',
+          confirm:'Confirm',search:'Search',filter:'Filter',all:'All',none:'None',
+          status:'Status',action:'Action',detail:'Detail',desc:'Description',time:'Time',
+          create:'Create',update:'Update',loading:'Loading...',success:'Success',
+          error:'Error',warning:'Warning',info:'Info',yes:'Yes',no:'No'
+        },
+        // Navigation
+        nav:{
+          dashboard:'Dashboard',projects:'Projects',tasks:'Tasks',
+          kanban:'Kanban',team:'Team',customers:'Customers',
+          meetings:'Meetings',files:'Files',issues:'Issues',
+          experiences:'Knowledge',capabilities:'Capabilities',reports:'Reports',
+          settings:'Settings',ai:'AI Assistant',diary:'Diary',
+          userMgmt:'User Management',auditLog:'Audit Log'
+        },
+        // Page titles
+        page:{
+          projects:{title:'Project Management',desc:'Manage all projects and track progress'},
+          tasks:{title:'Task Management',desc:'Manage tasks and track completion'},
+          kanban:{title:'Kanban Board',desc:'Visualize task flow with drag-and-drop'},
+          team:{title:'Team Management',desc:'Manage team members and information'},
+          customers:{title:'Customer Management',desc:'Manage customers and partnerships'},
+          meetings:{title:'Meeting Records',desc:'Manage and track project meetings'},
+          files:{title:'File Management',desc:'Manage project documents and attachments'},
+          issues:{title:'Issues & Risks',desc:'Manage issues and risks'},
+          experiences:{title:'Knowledge Base',desc:'Project experience and reuse'},
+          capabilities:{title:'Capability Matrix',desc:'Build team capabilities'},
+          reports:{title:'Reports Center',desc:'Data visualization and insights'},
+          settings:{title:'System Settings',desc:'Configure system and preferences'},
+          aiChat:{title:'AI Assistant',desc:'Smart conversation with auto data recognition'},
+          dashboard:{title:'Dashboard',desc:'Overview and quick actions'}
+        },
+        // Settings
+        settings:{
+          theme:'Theme',dark:'Dark Mode',light:'Light Mode',
+          aiConfig:'AI Configuration',apiKey:'ZhipuAI API Key',apiKeyPlaceholder:'Enter API Key',
+          dataManage:'Data Management',exportJSON:'Export JSON Backup',importJSON:'Import JSON Backup',
+          exportExcel:'Export Excel',demoData:'Generate Demo Data',clearData:'Clear All Data',
+          language:'Language',selectLang:'Select Language',
+          about:'About',version:'Version',author:'Author'
+        },
+        // Form fields
+        field:{
+          name:'Name',title:'Title',status:'Status',priority:'Priority',
+          progress:'Progress',budget:'Budget',startDate:'Start Date',
+          endDate:'End Date',assignee:'Assignee',dueDate:'Due Date',
+          client:'Client',type:'Type',description:'Description'
+        },
+        // Status labels
+        statusLabel:{
+          pending:'Pending',inProgress:'In Progress',completed:'Completed',
+          cancelled:'Cancelled',overdue:'Overdue'
+        },
+        // Priority
+        priorityLabel:{
+          high:'High',medium:'Medium',low:'Low'
+        },
+        // Empty states
+        empty:{
+          projects:'No projects',tasks:'No tasks',team:'No members',
+          customers:'No customers',meetings:'No meetings',files:'No files',
+          issues:'No issues',experiences:'No experiences',capabilities:'No capabilities',
+          noData:'No data'
+        },
+        // Toast messages
+        toast:{
+          saveSuccess:'Saved successfully',saveFailed:'Save failed',
+          deleteConfirm:'Are you sure to delete?',deleteSuccess:'Deleted successfully',
+          importSuccess:'Imported successfully',importFailed:'Import failed',
+          exportSuccess:'Exported successfully',exportFailed:'Export failed',
+          loginSuccess:'Login successful',loginFailed:'Invalid credentials',
+          apiKeySaved:'API Key saved',demoGenerated:'Demo data generated',
+          dataCleared:'Data cleared'
+        },
+        // Login
+        login:{
+          title:'PM OS',subtitle:'Project Management Platform',
+          username:'Username',usernamePlaceholder:'Enter username',
+          password:'Password',passwordPlaceholder:'Enter password (admin123)',
+          submit:'Login'
+        },
+        // Stats
+        stats:{
+          totalProjects:'Total Projects',activeProjects:'Active',
+          totalTasks:'Total Tasks',pendingTasks:'Pending',
+          totalMembers:'Team Size',totalCustomers:'Customers',
+          totalBudget:'Total Budget',totalCost:'Total Cost'
+        }
+      }
+    };
+    
+    // 翻译方法 - 支持嵌套路径如 'nav.projects' 或 'page.projects.title'
+    const t=(key,params={})=>{
+      const keys=key.split('.');
+      let value=i18nMessages[currentLang.value];
+      for(const k of keys){
+        if(value&&typeof value==='object'&&(k in value)){
+          value=value[k];
+        }else{
+          // 回退到中文
+          value=i18nMessages['zh-CN'];
+          for(const kk of keys){
+            if(value&&typeof value==='object'&&(kk in value)){
+              value=value[kk];
+            }else{
+              return key; // 找不到返回key
+            }
+          }
+          break;
+        }
+      }
+      // 如果是字符串，处理参数插值
+      if(typeof value==='string'){
+        Object.keys(params).forEach(p=>{
+          value=value.replace(new RegExp(`\\{${p}\\}`,'g'),params[p]);
+        });
+      }
+      return value;
+    };
+    
+    // 切换语言
+    const switchLanguage=(lang)=>{
+      currentLang.value=lang;
+      localStorage.setItem('pmos_lang',lang);
+      document.documentElement.lang=lang;
+      showToast(t('toast.saveSuccess'),'success');
+    };
+    
+    // 暴露给模板的i18n方法
+    const $t=t;
+    
+    // ===== 原有状态 =====
     // State
     let isLoggedIn=ref(false);
     let user=ref({});
@@ -5605,7 +6319,10 @@ const app=createApp({
     const editingId=ref(null);
     const toast=reactive({show:false,message:'',type:'info'});
     const loginForm=reactive({username:'',password:''});
-    const aiConfig=reactive({apiKey:''});
+const aiConfig=reactive({apiKey:''});
+    const notifyPrefs=reactive({taskDue:true,meetingReminder:true,dailySummary:false,reminderBefore:'1d'});
+    const saveNotifyPrefs=()=>localStorage.setItem('pmos_notify_prefs',JSON.stringify({taskDue:notifyPrefs.taskDue,meetingReminder:notifyPrefs.meetingReminder,dailySummary:notifyPrefs.dailySummary,reminderBefore:notifyPrefs.reminderBefore}));
+    const loadNotifyPrefs=()=>{const p=JSON.parse(localStorage.getItem('pmos_notify_prefs')||'{}');if(Object.keys(p).length){notifyPrefs.taskDue=p.taskDue;notifyPrefs.meetingReminder=p.meetingReminder;notifyPrefs.dailySummary=p.dailySummary;notifyPrefs.reminderBefore=p.reminderBefore||'1d';}};
     
     // Voice state
     const voiceRecording=ref(false);
@@ -6725,6 +7442,103 @@ ${project.description?`<h2>📝 项目描述</h2><p style="font-size:14px;line-h
       return svg;
     });
 
+    // --- 仪表盘迷你饼图SVG ---
+    const miniPieSvg=(data,size=160)=>{
+      if(!data||!data.length)return'<text x="50%" y="50%" text-anchor="middle" fill="var(--muted)" font-size="11">暂无数据</text>';
+      const total=data.reduce((s,d)=>s+d.value,0);
+      if(total===0)return'<text x="50%" y="50%" text-anchor="middle" fill="var(--muted)" font-size="11">暂无数据</text>';
+      const cx=size/2,cy=size/2,r=size/2-8;
+      let paths='',cur=0;
+      const colors=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+      data.forEach((d,i)=>{
+        const start=cur/total*2*Math.PI-Math.PI/2;
+        const end=(cur+d.value)/total*2*Math.PI-Math.PI/2;
+        const x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
+        const x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+        const large=(d.value/total>0.5)?1:0;
+        paths+=`<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${colors[i%colors.length]}" opacity="0.85"/>`;
+        cur+=d.value;
+      });
+      // 中心白圆
+      paths+=`<circle cx="${cx}" cy="${cy}" r="${r*0.5}" fill="var(--card)"/>`;
+      // 中心文字
+      paths+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--text)">${total}</text>`;
+      paths+=`<text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="8" fill="var(--muted)">总计</text>`;
+      return paths;
+    };
+    
+    // --- 仪表盘迷你水平条形图SVG ---
+    const miniBarSvg=(data,width=280,height=140)=>{
+      if(!data||!data.length)return'<text x="50%" y="50%" text-anchor="middle" fill="var(--muted)" font-size="11">暂无数据</text>';
+      const colors=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+      const pad={t:5,r:10,b:25,l:5};
+      const cw=width-pad.l-pad.r,ch=height-pad.t-pad.b;
+      const barH=Math.min(14,Math.floor(ch/data.length)-4);
+      const gap=Math.floor((ch-barH*data.length)/data.length);
+      let svg=`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+      data.slice(0,6).forEach((d,i)=>{
+        const bw=(d.value/Math.max(...data.map(x=>x.value),1))*cw;
+        const y=pad.t+i*(barH+gap);
+        svg+=`<rect x="${pad.l}" y="${y}" width="${bw}" height="${barH}" rx="3" fill="${colors[i%colors.length]}" opacity="0.8"/>`;
+        svg+=`<text x="${pad.l+bw+4}" y="${y+barH/2+4}" font-size="9" fill="var(--muted)">${d.label}</text>`;
+        svg+=`<text x="${bw}" y="${y+barH/2+4}" text-anchor="end" font-size="9" font-weight="600" fill="var(--text)">${d.value}</text>`;
+      });
+      svg+='</svg>';
+      return svg;
+    };
+    
+    // --- 仪表盘迷你趋势折线图SVG ---
+    const miniLineSvg=(data,width=280,height=100)=>{
+      if(!data||data.length<2)return'<text x="50%" y="50%" text-anchor="middle" fill="var(--muted)" font-size="11">数据不足</text>';
+      const pad={t:8,r:8,b:20,l:8};
+      const cw=width-pad.l-pad.r,ch=height-pad.t-pad.b;
+      const maxV=Math.max(...data.map(d=>Math.max(d.v1,d.v2)),1);
+      const step=cw/(data.length-1);
+      const pts1=data.map((d,i)=>`${pad.l+i*step},${pad.t+ch-d.v1/maxV*ch}`).join(' ');
+      const pts2=data.map((d,i)=>`${pad.l+i*step},${pad.t+ch-d.v2/maxV*ch}`).join(' ');
+      let svg=`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+      // 网格
+      for(let i=0;i<=3;i++){
+        const y=pad.t+ch-ch*i/3;
+        svg+=`<line x1="${pad.l}" y1="${y}" x2="${width-pad.r}" y2="${y}" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+        svg+=`<text x="${pad.l-2}" y="${y+3}" text-anchor="end" font-size="8" fill="var(--muted)">${Math.round(maxV*i/3)}</text>`;
+      }
+      // 线
+      svg+=`<polyline points="${pts1}" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round"/>`;
+      svg+=`<polyline points="${pts2}" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>`;
+      // 点
+      data.forEach((d,i)=>{
+        svg+=`<circle cx="${pad.l+i*step}" cy="${pad.t+ch-d.v1/maxV*ch}" r="2.5" fill="#6366f1"/>`;
+        svg+=`<circle cx="${pad.l+i*step}" cy="${pad.t+ch-d.v2/maxV*ch}" r="2.5" fill="#10b981"/>`;
+      });
+      // 图例
+      svg+=`<circle cx="${width-pad.r-50}" cy="${pad.t+10}" r="3" fill="#6366f1"/><text x="${width-pad.r-44}" y="${pad.t+13}" font-size="8" fill="var(--muted)">新建</text>`;
+      svg+=`<circle cx="${width-pad.r-10}" cy="${pad.t+10}" r="3" fill="#10b981"/><text x="${width-pad.r-4}" y="${pad.t+13}" font-size="8" fill="var(--muted)">完成</text>`;
+      svg+='</svg>';
+      return svg;
+    };
+    
+    // --- 仪表盘团队任务分布图 ---
+    const miniTeamSvg=(data,width=280,height=100)=>{
+      if(!data||!data.length)return'<text x="50%" y="50%" text-anchor="middle" fill="var(--muted)" font-size="11">暂无数据</text>';
+      const colors=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#84cc16'];
+      const maxV=Math.max(...data.map(d=>d.value),1);
+      let svg=`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
+      const barH=8,gap=6;
+      const totalH=Math.min(data.length,8)*(barH+gap)+8;
+      const startY=(height-totalH)/2;
+      data.slice(0,8).forEach((d,i)=>{
+        const bw=(d.value/maxV)*(width-80);
+        const y=startY+i*(barH+gap);
+        svg+=`<rect x="60" y="${y}" width="${bw}" height="${barH}" rx="4" fill="${colors[i%colors.length]}" opacity="0.75"/>`;
+        svg+=`<text x="58" y="${y+barH/2+3}" text-anchor="end" font-size="8" fill="var(--muted)">${d.label.slice(0,4)}</text>`;
+        svg+=`<text x="${60+bw+4}" y="${y+barH/2+3}" font-size="8" font-weight="600" fill="var(--text)">${d.value}</text>`;
+      });
+      svg+='</svg>';
+      return svg;
+    };
+    
+
     // --- 趋势折线图SVG ---
     const trendSvgContent=computed(()=>{
       const data=taskTrendData.value;
@@ -6972,14 +7786,19 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
       return '';
     });
 
+    // PC端跳过触摸事件处理
+    const isMobileDevice = () => window.innerWidth <= 768 && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    
     // 触摸手势状态（侧滑打开/关闭侧边栏）
     const touchStartX = ref(0);
     const touchStartY = ref(0);
     const handleTouchStart = (e) => {
+      if (!isMobileDevice()) return;
       touchStartX.value = e.touches[0].clientX;
       touchStartY.value = e.touches[0].clientY;
     };
     const handleTouchEnd = (e) => {
+      if (!isMobileDevice()) return;
       const dx = e.changedTouches[0].clientX - touchStartX.value;
       const dy = e.changedTouches[0].clientY - touchStartY.value;
       // 水平滑动距离 > 60px 且大于垂直距离
@@ -6991,6 +7810,61 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
           // 左滑 → 关闭
           mobileSidebarOpen.value = false;
         }
+      }
+    };
+    const handleTouchMove = (e) => {
+      if (!isMobileDevice()) return;
+      const deltaX = e.touches[0].clientX - touchStartX.value;
+      const deltaY = e.touches[0].clientY - touchStartY.value;
+      // 水平滑动 > 30px 且以水平为主
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
+        if (deltaX > 50 && touchStartX.value < 50) mobileSidebarOpen.value = true;
+        else if (deltaX < -50) mobileSidebarOpen.value = false;
+      }
+      // 下拉刷新（仅移动端）
+      if (isPulling.value && deltaY > 0) {
+        pullDistance.value = Math.min(deltaY, 100);
+        showPullIndicator.value = true;
+        pullText.value = pullDistance.value > 80 ? '释放刷新' : '下拉刷新';
+      }
+    };
+
+    // 移动端触摸增强功能
+    const touchEndX = ref(0);
+    const touchEndY = ref(0);
+    const isPulling = ref(false);
+    const pullDistance = ref(0);
+    const isRefreshing = ref(false);
+    const showPullIndicator = ref(false);
+    const pullText = ref('下拉刷新');
+
+    // 触摸反馈动效（Ripple Effect）
+    const createRipple = (event) => {
+      const target = event.currentTarget;
+      if (!target || window.innerWidth > 768) return;
+      const rect = target.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = event.clientX - rect.left - size / 2 + 'px';
+      ripple.style.top = event.clientY - rect.top - size / 2 + 'px';
+      ripple.classList.add('ripple-effect');
+      target.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    };
+
+    // 下拉刷新
+    const triggerRefresh = async () => {
+      isRefreshing.value = true;
+      pullText.value = '刷新中...';
+      try {
+        await new Promise(r => setTimeout(r, 1000));
+        loadAll();
+        showToast('数据已刷新', 'success');
+      } catch (e) {
+        showToast('刷新失败', 'danger');
+      } finally {
+        isRefreshing.value = false;
       }
     };
 
@@ -7332,6 +8206,51 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
       }).sort((a,b)=>a.health.score-b.health.score)
     );
 
+
+    // 【Dashboard】图表数据
+    const dashTaskStatusPie=computed(()=>{
+      const statuses=['pending','in-progress','review','done','blocked'];
+      const names=['待处理','进行中','审核中','已完成','已阻塞'];
+      return statuses.map((s,i)=>({
+        label:names[i],
+        value:tasks.value.filter(t=>t.status===s).length
+      })).filter(d=>d.value>0);
+    });
+    const dashProjectProgressBar=computed(()=>{
+      return projects.value.slice(0,6).map(p=>{
+        const detail=getProjectDetail(p.id);
+        const total=detail?detail.stats.totalTasks:0;
+        const done=detail?detail.stats.completedTasks:0;
+        return{label:p.name.slice(0,6),value:total,done};
+      });
+    });
+    const dashWeeklyTrendLine=computed(()=>{
+      const days=7;
+      const now=new Date();
+      const result=[];
+      for(let i=days-1;i>=0;i--){
+        const d=new Date(now);d.setDate(d.getDate()-i);
+        const dateStr=`${d.getMonth()+1}/${d.getDate()}`;
+        const dayTasks=tasks.value.filter(t=>{
+          const cd=new Date(t.createdAt||Date.now());
+          return cd.toDateString()===d.toDateString();
+        });
+        const dayDone=tasks.value.filter(t=>{
+          if(!t.completedAt)return false;
+          const cd=new Date(t.completedAt);
+          return cd.toDateString()===d.toDateString();
+        });
+        result.push({date:dateStr,v1:dayTasks.length,v2:dayDone.length});
+      }
+      return result;
+    });
+    const dashTeamWorkloadBar=computed(()=>{
+      return members.value.slice(0,8).map(m=>{
+        const memberTasks=tasks.value.filter(t=>t.assignee===m.name);
+        return{label:m.name,value:memberTasks.length};
+      }).filter(d=>d.value>0);
+    });
+
     // AI Configuration
     const saveAiConfig=()=>{
       localStorage.setItem('pmos_ai_config',JSON.stringify(aiConfig));
@@ -7341,7 +8260,6 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
     // Voice Recognition - 修复版，参考极简版实现
     const initVoiceRecognition=()=>{
       try {
-        console.log('开始初始化语音识别...');
         
         // 检查浏览器支持
         if(!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)){
@@ -7359,7 +8277,6 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
         
         // 事件处理程序 - 修复版：累加内容，不清空
         recognition.onstart=()=>{
-          console.log('语音识别已启动');
           voiceRecording.value=true;
           voiceStatus.value='🎤 正在聆听，请说话...';
           // 不再每次清空，让内容累加
@@ -7385,12 +8302,10 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
           // 同时更新仪表盘输入框
           dashboardAiInput.value = combinedText;
           if(voiceText.value.trim()){
-            console.log('识别到语音:', voiceText.value.substring(0,50));
           }
         };
         
         recognition.onend=()=>{
-          console.log('语音识别结束');
           voiceRecording.value=false;
           
           if(finalTranscript && finalTranscript.trim()){
@@ -7449,7 +8364,6 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
       
       if(voiceRecording.value){
         // 停止录音
-        console.log('停止语音识别');
         try {
           if(recognition){
             recognition.stop();
@@ -7463,7 +8377,6 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
         }
       }else{
         // 开始录音
-        console.log('开始语音识别');
         
         // 重置状态 - 清除AI分析结果和之前的语音内容
         aiResult.value=null;
@@ -7473,7 +8386,6 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
         
         // 检查是否已初始化语音识别
         if(!recognition){
-          console.log('语音识别未初始化，正在初始化...');
           const initSuccess = initVoiceRecognition();
           if(!initSuccess){
             console.error('语音识别初始化失败');
@@ -7494,7 +8406,6 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
         // 启动语音识别
         try {
           recognition.start();
-          console.log('语音识别已启动');
         } catch (error) {
           console.error('语音识别启动失败:', error);
           voiceRecording.value=false;
@@ -7681,12 +8592,10 @@ ${capabilityList}`;
           if(jsonMatch){
             try {
               const results=JSON.parse(jsonMatch[0]);
-              console.log('AI分析结果:', results);
               
               // 检查是否有客户实体
               const customerEntities = results.filter(r => r.type === 'customer');
               if (customerEntities.length > 0) {
-                console.log('找到客户实体:', customerEntities);
               }
               
               // 过滤掉置信度太低的结果
@@ -7807,7 +8716,6 @@ ${capabilityList}`;
             if(cmd.type === 'delete' || cmd.type === 'update'){
               // 删除客户 - 直接通过名称匹配当前列表中的所有客户
               const customerName = params.name || params.customerName || params.customer || params.company || params.target;
-              console.log('删除客户, 搜索:', customerName, '当前客户列表:', customers.value);
               
               if(customerName && customers.value.length > 0){
                 // 遍历所有客户，查找名称包含客户名的记录
@@ -8618,7 +9526,6 @@ ${userQuestion}
     // 保存选中的多个实体
     const saveSelectedEntities=(selectedIndices)=>{
       if(!aiResult.value || aiResult.value.type !== 'multi'){
-        console.log('aiResult:', aiResult.value);
         showToast('没有可保存的数据','warning');
         return;
       }
@@ -8629,9 +9536,6 @@ ${userQuestion}
       
       // 如果没有传入参数，使用当前选中的实体
       const indicesToSave=selectedIndices||selectedEntities.value;
-      
-      console.log('selectedEntities:', selectedEntities.value);
-      console.log('indicesToSave:', indicesToSave);
       
       // 确保indicesToSave是有效的数组
       if (!Array.isArray(indicesToSave) || indicesToSave.length === 0) {
@@ -9003,13 +9907,79 @@ ${userQuestion}
       }
     };
 
-    // 处理键盘事件，避免Vue 3的withModifiers兼容性问题
+// 键盘快捷键系统
+    const showShortcutHelp=ref(false);
+    const shortcuts = [
+      {key:'G then D',desc:'跳转仪表盘',category:'导航'},
+      {key:'G then P',desc:'跳转项目管理',category:'导航'},
+      {key:'G then T',desc:'跳转任务看板',category:'导航'},
+      {key:'G then K',desc:'跳转知识库',category:'导航'},
+      {key:'G then R',desc:'跳转报表中心',category:'导航'},
+      {key:'G then S',desc:'跳转系统设置',category:'导航'},
+      {key:'N',desc:'新建任务',category:'操作'},
+      {key:'C',desc:'新建项目',category:'操作'},
+      {key:'/',desc:'聚焦搜索框',category:'操作'},
+      {key:'Esc',desc:'关闭弹窗/面板',category:'操作'},
+      {key:'?',desc:'显示快捷键帮助',category:'帮助'},
+      {key:'M',desc:'切换侧边栏',category:'界面'},
+      {key:'Ctrl+E',desc:'导出数据',category:'操作'},
+      {key:'Ctrl+I',desc:'导入数据',category:'操作'},
+    ];
+    const gKeyPending=ref(false);
+    let gKeyTimer=null;
     const handleKeyUp=(event)=>{
-      if(event.key==='Enter' || event.keyCode===13){
-        handleLogin();
+      // Esc 关闭所有弹窗/面板
+      if(event.key==='Escape'){
+        showNotificationPanel.value=false;
+        showWorkflowPanel.value=false;
+        showExportMenu.value=false;
+        showBatchModal.value=false;
+        showUserModal.value=false;
+        showTemplatePanel.value=false;
+        showProjectTemplatePanel.value=false;
+        showDashboardSettings.value=false;
+        showShortcutHelp.value=false;
+        closeModal();
+        return;
+      }
+      // ? 显示快捷键帮助
+      if(event.key==='?' && !isInputFocused()){
+        showShortcutHelp.value=!showShortcutHelp.value;
+        return;
+      }
+      // G键序列导航
+      if(event.key==='g' || event.key==='G'){
+        gKeyPending.value=true;
+        if(gKeyTimer) clearTimeout(gKeyTimer);
+        gKeyTimer=setTimeout(()=>{gKeyPending.value=false;},1000);
+        return;
+      }
+      if(gKeyPending.value){
+        gKeyPending.value=false;
+        clearTimeout(gKeyTimer);
+        switch(event.key){
+          case 'd':case 'D':currentPage.value='dashboard';break;
+          case 'p':case 'P':currentPage.value='projects';break;
+          case 't':case 'T':currentPage.value='kanban';break;
+          case 'k':case 'K':currentPage.value='experiences';break;
+          case 'r':case 'R':currentPage.value='reports';break;
+          case 's':case 'S':currentPage.value='settings';break;
+        }
+        return;
+      }
+      // 单键快捷键
+      if(!isInputFocused()){
+        if(event.key==='n'||event.key==='N'){currentPage.value='projects';setTimeout(()=>openModal('task'),100);}
+        else if(event.key==='c'||event.key==='C'){currentPage.value='projects';setTimeout(()=>openModal('project'),100);}
+        else if(event.key==='/'){document.getElementById('global-search')?.focus();}
+        else if(event.key==='m'||event.key==='M'){toggleSidebar();}
+        else if(event.key==='Enter' || event.keyCode===13){handleLogin();}
       }
     };
-
+    const isInputFocused=()=>{
+      const tag=document.activeElement?.tagName?.toLowerCase();
+      return tag==='input'||tag==='textarea'||tag==='select';
+    };
     const handleLogout=()=>{
       const nickname=user.value.nickname||user.value.username;
       logAudit('logout','用户退出登录: '+nickname,'system',nickname);
@@ -9040,18 +10010,35 @@ ${userQuestion}
       document.documentElement.setAttribute('data-theme',theme);
       localStorage.setItem('pm-os-theme',theme);
       currentTheme.value=theme;
-      // 更新胶囊按钮状态
-      document.querySelectorAll('.segment-item[data-theme]').forEach(item=>{
-        item.classList.toggle('active',item.getAttribute('data-theme')===theme);
+      // 更新胶囊按钮状态（包括auto按钮）
+      document.querySelectorAll('.segment-item').forEach(item=>{
+        const t=item.getAttribute('data-theme');
+        if(t==='auto'){
+          item.classList.toggle('active',localStorage.getItem('pm-os-theme')==='auto');
+        }else{
+          item.classList.toggle('active',t===theme);
+        }
       });
       nextTick(()=>{if(window.lucide)lucide.createIcons()});
     };
     
     // 初始化主题
-    const initTheme=()=>{
+const initTheme=()=>{
       const savedTheme=localStorage.getItem('pm-os-theme');
-      if(savedTheme){
-        setTheme(savedTheme);
+      // auto或未设置时：跟随系统主题
+      if(savedTheme==='auto'||!savedTheme){
+        const prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.setAttribute('data-theme',prefersDark?'dark':'light');
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',e=>{
+          const cur=localStorage.getItem('pm-os-theme');
+          if(cur==='auto'||!cur){
+            document.documentElement.setAttribute('data-theme',e.matches?'dark':'light');
+          }
+        });
+      }else{
+        // 手动选择的主题直接应用属性
+        document.documentElement.setAttribute('data-theme',savedTheme);
       }
     };
 
@@ -9091,8 +10078,9 @@ ${userQuestion}
     };
     
     const loadAll=()=>{
-      loadProjects();loadCustomers();loadTasks();loadIssues();loadExperiences();loadCapabilities();loadDiaries();loadFiles();loadMeetings();loadTeamMembers();loadMilestones();loadTaskTemplates();loadWorkflowRules();loadTaskHours();
-      loadInputHistory();loadNotifications();loadSystemUsers();loadAuditLogs();initDefaultUsers();
+      loadProjects();loadCustomers();loadTasks();loadIssues();loadExperiences();loadCapabilities();loadDiaries();loadFiles();loadMeetings();loadTeamMembers();loadMilestones();loadTaskTemplates();loadWorkflowRules();loadTaskHours();loadProjectTemplates();
+      loadInputHistory();loadNotifications();loadNotifyPrefs();loadSystemUsers();loadAuditLogs();initDefaultUsers();
+      loadRecentActivities();
       // 加载AI配置
       const savedAiConfig=localStorage.getItem('pmos_ai_config');
       if(savedAiConfig){
@@ -9101,6 +10089,87 @@ ${userQuestion}
           if(parsed.apiKey) aiConfig.apiKey=parsed.apiKey;
         }catch(e){}
       }
+    };
+
+    // ===== Will：工作流规则管理 =====
+    const showWorkflowPanel=ref(false);
+    const ruleForm=reactive({
+      name:'',
+      type:'autoStatus',
+      enabled:true,
+      condition:{status:'',days:0,keyword:''},
+      action:{status:'',notify:false,assignee:''}
+    });
+    const ruleTypes=[
+      {value:'autoStatus',label:'自动状态更新',icon:'refresh-cw',desc:'当条件满足时自动更新状态'},
+      {value:'autoNotify',label:'自动通知提醒',icon:'bell',desc:'当条件满足时发送通知'},
+      {value:'autoAssign',label:'自动分配任务',icon:'user-plus',desc:'根据关键词自动指派负责人'},
+      {value:'autoCreate',label:'自动创建任务',icon:'plus-circle',desc:'当条件满足时自动创建新任务'}
+    ];
+    const editingRuleId=ref(null);
+    const workflowRuleForm=ref({name:'',trigger:'taskCreated',actionType:'autoStatus',condition:'',action:{status:'',notify:false,assignee:''}});
+    const openRuleForm=(rule=null)=>{
+      if(rule){
+        editingRuleId.value=rule.id;
+        workflowRuleForm.value={...rule};
+      }else{
+        editingRuleId.value=null;
+        workflowRuleForm.value={name:'',trigger:'taskCreated',actionType:'autoStatus',condition:'',action:{status:'',notify:false,assignee:''}};
+      }
+    };
+    const saveWorkflowRule=()=>{
+      if(!workflowRuleForm.value.name)return;
+      if(editingRuleId.value){
+        const idx=workflowRules.value.findIndex(r=>r.id===editingRuleId.value);
+        if(idx>-1)workflowRules.value[idx]={...workflowRuleForm.value,id:editingRuleId.value,updatedAt:new Date().toISOString()};
+      }else{
+        workflowRules.value.push({...workflowRuleForm.value,id:'rule_'+Date.now(),enabled:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+      }
+      saveWorkflowRules();
+    };
+    const deleteWorkflowRule=(id)=>{workflowRules.value=workflowRules.value.filter(r=>r.id!==id);saveWorkflowRules();};
+    const toggleRuleEnabled=(id)=>{const r=workflowRules.value.find(x=>x.id===id);if(r)r.enabled=!r.enabled;saveWorkflowRules();};
+
+    // ===== Will：实时协作模拟 =====
+    const recentActivities=ref([]);
+    const loadRecentActivities=()=>{
+      try{
+        const d=localStorage.getItem('pmos_recent_activities');
+        recentActivities.value=d?JSON.parse(d):[];
+      }catch(e){recentActivities.value=[];}
+    };
+    const saveRecentActivities=()=>{
+      localStorage.setItem('pmos_recent_activities',JSON.stringify(recentActivities.value));
+    };
+    const addTeamActivity=(user,action,type='edit')=>{
+      recentActivities.value.unshift({
+        id:Date.now(),
+        user,
+        action,
+        type,
+        time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})
+      });
+      if(recentActivities.value.length>50){
+        recentActivities.value=recentActivities.value.slice(0,50);
+      }
+      saveRecentActivities();
+    };
+    const simulateTeamActivity=()=>{
+      const users=['张三','李四','王五','赵六','钱七'];
+      const actions=[
+        {text:'创建了新任务「优化首页加载速度」',type:'create'},
+        {text:'完成了任务「用户登录模块开发」',type:'complete'},
+        {text:'更新了项目进度至75%',type:'edit'},
+        {text:'添加了客户「腾讯科技」',type:'create'},
+        {text:'评论了任务「API接口设计」',type:'comment'},
+        {text:'标记问题为已解决',type:'complete'},
+        {text:'上传了文件「需求文档v2.pdf」',type:'create'},
+        {text:'编辑了会议记录',type:'edit'}
+      ];
+      const randomUser=users[Math.floor(Math.random()*users.length)];
+      const randomAction=actions[Math.floor(Math.random()*actions.length)];
+      addTeamActivity(randomUser,randomAction.text,randomAction.type);
+      showToast(`${randomUser} ${randomAction.text}`,'info');
     };
 
     const loadProjects=()=>{try{const data=localStorage.getItem('pmos_projects');projects.value=data?JSON.parse(data):[];}catch(e){projects.value=[];}};
@@ -9134,7 +10203,8 @@ ${userQuestion}
     const formatMoney=(n)=>n?parseFloat(n).toLocaleString():'0';
     const truncate=(str,len)=>str?str.slice(0,len):'';
     const getStatusBadge=(s)=>({'待处理':'badge-gray','进行中':'badge-info','暂停中':'badge-warning','已完成':'badge-success'}[s]||'badge-gray');
-    const getPriorityBadge=(p)=>({'紧急':'badge-danger','高':'badge-danger','中':'badge-warning','低':'badge-gray'}[p]||'badge-gray');
+    const getPriorityBadge=(p)=>({'紧急':'badge-danger','高':'badge-danger','中':'badge-warning','低':'badge-gray','可延后':'badge-gray'}[p]||'badge-gray');
+    const getProjectName=(id)=>{const p=projects.value.find(p=>p.id===id);return p?p.name:'未知项目';};
 
     const openModal=(type)=>{
       modalType.value=type;
@@ -9143,7 +10213,7 @@ ${userQuestion}
       // 根据类型重置formData的特定字段
       const resetMap={
         project:()=>{Object.assign(formData,{name:'',clientName:'',projectType:'',status:'',startDate:'',planEndDate:'',budget:'',progress:0,description:''});},
-        task:()=>{Object.assign(formData,{name:'',priority:'',dueDate:'',assignee:'',description:'',status:'待处理',progress:0});},
+        task:()=>{Object.assign(formData,{name:'',type:'',priority:'中',dueDate:'',startDate:'',assignee:'',description:'',status:'待处理',progress:0,projectId:'',estimatedHours:'',actualHours:'',tags:'',checkItems:''});},
         customer:()=>{Object.assign(formData,{name:'',industry:'',contactPerson:'',contactPhone:'',contactEmail:'',companyAddress:''});},
         issue:()=>{Object.assign(formData,{title:'',issueType:'',severity:'',reporter:'',description:'',status:'open'});},
         experience:()=>{Object.assign(formData,{title:'',category:'',context:'',conclusion:'',effectiveness:''});},
@@ -9183,8 +10253,17 @@ ${userQuestion}
 
     const saveTask=()=>{
       const data=[...tasks.value];
-      if(editingId.value){const i=data.findIndex(t=>t.id===editingId.value);if(i>-1)data[i]={...data[i],...formData};}
-      else{data.unshift({...formData,id:Date.now(),progress:0,status:'待处理'});}
+      if(editingId.value){
+        const i=data.findIndex(t=>t.id===editingId.value);
+        if(i>-1){
+          data[i]={...data[i],...formData};
+          logAudit('edit','编辑任务: '+formData.name,'task',formData.name);
+        }
+      }else{
+        const newTask={...formData,id:Date.now(),progress:0,status:'待处理'};
+        data.unshift(newTask);
+        logAudit('create','创建任务: '+formData.name,'task',formData.name);
+      }
       localStorage.setItem('pmos_tasks',JSON.stringify(data));
       loadTasks();closeModal();showToast('操作成功','success');
     };
@@ -9454,9 +10533,380 @@ ${userQuestion}
       return renderMarkdown(content);
     };
 
+    // 项目模板
+    const projectTemplates=ref([]);
+    const loadProjectTemplates=()=>{try{const d=localStorage.getItem('pmos_project_templates');projectTemplates.value=d?JSON.parse(d):[];}catch(e){projectTemplates.value=[];}};
+    const saveProjectTemplates=()=>{localStorage.setItem('pmos_project_templates',JSON.stringify(projectTemplates.value));};
+    const showProjectTemplatePanel=ref(false);
+    const projectTemplateForm=ref({name:'',projectType:'软件研发',defaultBudget:'',duration:'',description:'',tasksText:'',milestonesText:''});
+    const editingProjectTemplateId=ref(null);
+    
+    const openProjectTemplateForm=(tpl=null)=>{
+      if(tpl){
+        editingProjectTemplateId.value=tpl.id;
+        projectTemplateForm.value={
+          name:tpl.name,
+          projectType:tpl.projectType||'软件研发',
+          defaultBudget:tpl.defaultBudget||'',
+          duration:tpl.duration||'',
+          description:tpl.description||'',
+          tasksText:(tpl.tasks||[]).map(t=>`${t.name}|${t.priority||'中'}|${t.assignee||''}`).join('\n'),
+          milestonesText:(tpl.milestones||[]).map(m=>`${m.name}|${m.offset||0}`).join('\n')
+        };
+      }else{
+        editingProjectTemplateId.value=null;
+        projectTemplateForm.value={name:'',projectType:'软件研发',defaultBudget:'',duration:'',description:'',tasksText:'',milestonesText:''};
+      }
+    };
+    
+    const cancelProjectTemplateForm=()=>{
+      editingProjectTemplateId.value=null;
+      projectTemplateForm.value={name:'',projectType:'软件研发',defaultBudget:'',duration:'',description:'',tasksText:'',milestonesText:''};
+    };
+    
+    const saveProjectTemplate=()=>{
+      if(!projectTemplateForm.value.name.trim()){
+        showToast('请输入模板名称','warning');
+        return;
+      }
+      
+      const tasks=projectTemplateForm.value.tasksText.split('\n').filter(line=>line.trim()).map(line=>{
+        const [name,priority,assignee]=line.split('|').map(s=>s.trim());
+        return {name,priority:priority||'中',assignee:assignee||''};
+      });
+      
+      const milestones=projectTemplateForm.value.milestonesText.split('\n').filter(line=>line.trim()).map(line=>{
+        const [name,offset]=line.split('|').map(s=>s.trim());
+        return {name,offset:parseInt(offset)||0};
+      });
+      
+      const templateData={
+        id:editingProjectTemplateId.value||Date.now(),
+        name:projectTemplateForm.value.name.trim(),
+        projectType:projectTemplateForm.value.projectType,
+        defaultBudget:projectTemplateForm.value.defaultBudget,
+        duration:projectTemplateForm.value.duration,
+        description:projectTemplateForm.value.description.trim(),
+        tasks,
+        milestones
+      };
+      
+      if(editingProjectTemplateId.value){
+        const idx=projectTemplates.value.findIndex(t=>t.id===editingProjectTemplateId.value);
+        if(idx>-1)projectTemplates.value[idx]=templateData;
+      }else{
+        projectTemplates.value.unshift(templateData);
+      }
+      
+      saveProjectTemplates();
+      cancelProjectTemplateForm();
+      showToast('模板保存成功','success');
+      logAudit('create','保存项目模板: '+templateData.name,'project_template',templateData.name);
+    };
+    
+    const deleteProjectTemplate=(id)=>{
+      if(!confirm('确定删除此模板？'))return;
+      projectTemplates.value=projectTemplates.value.filter(t=>t.id!==id);
+      saveProjectTemplates();
+      showToast('模板已删除','success');
+      logAudit('delete','删除项目模板','project_template',id);
+    };
+    
+    const applyProjectTemplate=(tpl)=>{
+      // 从模板创建新项目
+      const today=new Date().toISOString().slice(0,10);
+      const endDate=tpl.duration?new Date(Date.now()+parseInt(tpl.duration)*24*60*60*1000).toISOString().slice(0,10):'';
+      
+      const newProject={
+        id:Date.now(),
+        name:tpl.name+' - '+new Date().toLocaleDateString('zh-CN'),
+        projectType:tpl.projectType,
+        budget:tpl.defaultBudget||'',
+        startDate:today,
+        planEndDate:endDate,
+        status:'进行中',
+        progress:0,
+        description:tpl.description,
+        templateId:tpl.id
+      };
+      
+      projects.value.unshift(newProject);
+      localStorage.setItem('pmos_projects',JSON.stringify(projects.value));
+      
+      // 创建预设任务
+      if(tpl.tasks&&tpl.tasks.length){
+        const newTasks=tpl.tasks.map((t,idx)=>{
+          const dueDate=t.offset?new Date(Date.now()+parseInt(t.offset)*24*60*60*1000).toISOString().slice(0,10):'';
+          return {
+            id:Date.now()+idx,
+            name:t.name,
+            projectId:newProject.id,
+            priority:t.priority||'中',
+            assignee:t.assignee||'',
+            status:'待处理',
+            progress:0,
+            dueDate,
+            description:''
+          };
+        });
+        tasks.value=[...tasks.value,...newTasks];
+        localStorage.setItem('pmos_tasks',JSON.stringify(tasks.value));
+      }
+      
+      // 创建预设里程碑
+      if(tpl.milestones&&tpl.milestones.length){
+        const newMilestones=tpl.milestones.map((m,idx)=>({
+          id:Date.now()+idx,
+          projectId:newProject.id,
+          name:m.name,
+          date:new Date(Date.now()+parseInt(m.offset||0)*24*60*60*1000).toISOString().slice(0,10),
+          status:'pending'
+        }));
+        milestones.value=[...milestones.value,...newMilestones];
+        localStorage.setItem('pmos_milestones',JSON.stringify(milestones.value));
+      }
+      
+      showProjectTemplatePanel.value=false;
+      showToast(`项目「${newProject.name}」创建成功，包含${tpl.tasks.length}个任务和${tpl.milestones.length}个里程碑`,'success');
+      logAudit('create','从模板创建项目: '+newProject.name,'project',newProject.id);
+    };
+
+    // 数据导入导出功能
+    const jsonFileInput = ref(null);
+    const excelFileInput = ref(null);
+    
+    const triggerImportJSON = () => {
+      if(jsonFileInput.value) jsonFileInput.value.click();
+    };
+    
+    const triggerImportExcel = () => {
+      if(excelFileInput.value) excelFileInput.value.click();
+    };
+    
+    // 导出JSON完整备份
+    const exportJSON = () => {
+      const backup = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        data: {
+          projects: projects.value,
+          tasks: tasks.value,
+          customers: customers.value,
+          teamMembers: teamMembers.value,
+          meetings: meetings.value,
+          diaries: diaries.value,
+          files: files.value,
+          issues: issues.value,
+          experiences: experiences.value,
+          capabilities: capabilities.value,
+          milestones: milestones.value,
+          taskTemplates: taskTemplates.value,
+          workflowRules: workflowRules.value,
+          notifications: notifications.value,
+          chatHistory: chatHistory.value,
+          systemUsers: systemUsers.value,
+          auditLogs: auditLogs.value
+        }
+      };
+      
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PM-OS-Backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('数据备份已导出', 'success');
+      logAudit('export', '导出JSON数据备份', 'system', 'backup');
+    };
+    
+    // 导入JSON备份
+    const importJSON = (event) => {
+      const file = event.target.files[0];
+      if(!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const backup = JSON.parse(e.target.result);
+          if(!backup.data) throw new Error('无效的备份文件格式');
+          
+          if(confirm('导入将覆盖当前所有数据，确定继续吗？')) {
+            // 恢复所有数据
+            if(backup.data.projects) { projects.value = backup.data.projects; localStorage.setItem('pmos_projects', JSON.stringify(backup.data.projects)); }
+            if(backup.data.tasks) { tasks.value = backup.data.tasks; localStorage.setItem('pmos_tasks', JSON.stringify(backup.data.tasks)); }
+            if(backup.data.customers) { customers.value = backup.data.customers; localStorage.setItem('pmos_customers', JSON.stringify(backup.data.customers)); }
+            if(backup.data.teamMembers) { teamMembers.value = backup.data.teamMembers; localStorage.setItem('pmos_team_members', JSON.stringify(backup.data.teamMembers)); }
+            if(backup.data.meetings) { meetings.value = backup.data.meetings; localStorage.setItem('pmos_meetings', JSON.stringify(backup.data.meetings)); }
+            if(backup.data.diaries) { diaries.value = backup.data.diaries; localStorage.setItem('pmos_diaries', JSON.stringify(backup.data.diaries)); }
+            if(backup.data.files) { files.value = backup.data.files; localStorage.setItem('pmos_files', JSON.stringify(backup.data.files)); }
+            if(backup.data.issues) { issues.value = backup.data.issues; localStorage.setItem('pmos_issues', JSON.stringify(backup.data.issues)); }
+            if(backup.data.experiences) { experiences.value = backup.data.experiences; localStorage.setItem('pmos_experiences', JSON.stringify(backup.data.experiences)); }
+            if(backup.data.capabilities) { capabilities.value = backup.data.capabilities; localStorage.setItem('pmos_capabilities', JSON.stringify(backup.data.capabilities)); }
+            if(backup.data.milestones) { milestones.value = backup.data.milestones; localStorage.setItem('pmos_milestones', JSON.stringify(backup.data.milestones)); }
+            if(backup.data.taskTemplates) { taskTemplates.value = backup.data.taskTemplates; localStorage.setItem('pmos_task_templates', JSON.stringify(backup.data.taskTemplates)); }
+            if(backup.data.workflowRules) { workflowRules.value = backup.data.workflowRules; localStorage.setItem('pmos_workflow_rules', JSON.stringify(backup.data.workflowRules)); }
+            if(backup.data.notifications) { notifications.value = backup.data.notifications; localStorage.setItem('pmos_notifications', JSON.stringify(backup.data.notifications)); }
+            if(backup.data.chatHistory) { chatHistory.value = backup.data.chatHistory; localStorage.setItem('chatHistory', JSON.stringify(backup.data.chatHistory)); }
+            if(backup.data.systemUsers) { systemUsers.value = backup.data.systemUsers; localStorage.setItem('pmos_system_users', JSON.stringify(backup.data.systemUsers)); }
+            if(backup.data.auditLogs) { auditLogs.value = backup.data.auditLogs; localStorage.setItem('pmos_audit_logs', JSON.stringify(backup.data.auditLogs)); }
+            
+            showToast('数据已成功恢复', 'success');
+            logAudit('import', '导入JSON数据备份', 'system', 'backup');
+          }
+        } catch(err) {
+          showToast('导入失败：' + err.message, 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    };
+    
+    // 导出项目Excel
+    const exportProjectsExcel = () => {
+      if(!window.XLSX) {
+        showToast('Excel库未加载', 'error');
+        return;
+      }
+      
+      const data = projects.value.map(p => ({
+        '项目名称': p.name || '',
+        '客户名称': p.clientName || '',
+        '项目类型': p.projectType || '',
+        '状态': p.status || '',
+        '开始日期': p.startDate || '',
+        '计划结束日期': p.planEndDate || '',
+        '预算': p.budget || '',
+        '进度': (p.progress || 0) + '%',
+        '描述': p.description || ''
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '项目列表');
+      
+      // 设置列宽
+      ws['!cols'] = [
+        {wch: 20}, {wch: 15}, {wch: 12}, {wch: 10},
+        {wch: 12}, {wch: 14}, {wch: 10}, {wch: 8}, {wch: 30}
+      ];
+      
+      XLSX.writeFile(wb, `PM-OS-项目列表-${new Date().toISOString().slice(0,10)}.xlsx`);
+      showToast('项目Excel已导出', 'success');
+      logAudit('export', '导出项目Excel', 'project', 'excel');
+    };
+    
+    // 导出任务Excel
+    const exportTasksExcel = () => {
+      if(!window.XLSX) {
+        showToast('Excel库未加载', 'error');
+        return;
+      }
+      
+      const data = tasks.value.map(t => ({
+        '任务名称': t.name || '',
+        '优先级': t.priority || '',
+        '截止日期': t.dueDate || '',
+        '负责人': t.assignee || '',
+        '状态': t.status || '',
+        '进度': (t.progress || 0) + '%',
+        '描述': t.description || ''
+      }));
+      
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '任务列表');
+      
+      ws['!cols'] = [
+        {wch: 25}, {wch: 10}, {wch: 12}, {wch: 12},
+        {wch: 10}, {wch: 8}, {wch: 30}
+      ];
+      
+      XLSX.writeFile(wb, `PM-OS-任务列表-${new Date().toISOString().slice(0,10)}.xlsx`);
+      showToast('任务Excel已导出', 'success');
+      logAudit('export', '导出任务Excel', 'task', 'excel');
+    };
+    
+    // 导入Excel
+    const importExcel = (event) => {
+      const file = event.target.files[0];
+      if(!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          if(!window.XLSX) throw new Error('Excel库未加载');
+          
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(sheet);
+          
+          if(jsonData.length === 0) {
+            showToast('Excel文件为空', 'warning');
+            return;
+          }
+          
+          // 智能识别导入类型
+          const headers = Object.keys(jsonData[0]);
+          let importType = '';
+          
+          if(headers.includes('项目名称') || headers.includes('客户名称')) {
+            importType = 'projects';
+          } else if(headers.includes('任务名称') || headers.includes('优先级')) {
+            importType = 'tasks';
+          } else {
+            importType = prompt('请输入导入类型（projects/tasks）:', 'projects') || 'projects';
+          }
+          
+          if(importType === 'projects') {
+            const newProjects = jsonData.map(row => ({
+              id: Date.now() + Math.random(),
+              name: row['项目名称'] || row['name'] || '',
+              clientName: row['客户名称'] || row['clientName'] || '',
+              projectType: row['项目类型'] || row['projectType'] || '',
+              status: row['状态'] || row['status'] || '进行中',
+              startDate: row['开始日期'] || row['startDate'] || '',
+              planEndDate: row['计划结束日期'] || row['planEndDate'] || '',
+              budget: row['预算'] || row['budget'] || '',
+              progress: parseInt(row['进度'] || row['progress'] || '0'),
+              description: row['描述'] || row['description'] || ''
+            }));
+            
+            projects.value = [...projects.value, ...newProjects];
+            localStorage.setItem('pmos_projects', JSON.stringify(projects.value));
+            showToast(`成功导入 ${newProjects.length} 个项目`, 'success');
+            logAudit('import', '导入项目Excel: ' + newProjects.length + '条', 'project', 'excel');
+            
+          } else if(importType === 'tasks') {
+            const newTasks = jsonData.map(row => ({
+              id: Date.now() + Math.random(),
+              name: row['任务名称'] || row['name'] || '',
+              priority: row['优先级'] || row['priority'] || '中',
+              dueDate: row['截止日期'] || row['dueDate'] || '',
+              assignee: row['负责人'] || row['assignee'] || '',
+              status: row['状态'] || row['status'] || '待处理',
+              progress: parseInt(row['进度'] || row['progress'] || '0'),
+              description: row['描述'] || row['description'] || ''
+            }));
+            
+            tasks.value = [...tasks.value, ...newTasks];
+            localStorage.setItem('pmos_tasks', JSON.stringify(tasks.value));
+            showToast(`成功导入 ${newTasks.length} 个任务`, 'success');
+            logAudit('import', '导入任务Excel: ' + newTasks.length + '条', 'task', 'excel');
+          }
+          
+        } catch(err) {
+          showToast('导入失败：' + err.message, 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    };
+
     // 页面加载时初始化
     onMounted(()=>{
-      console.log('PM-OS 系统初始化完成');
       
       // 尝试恢复登录状态（支持页面刷新后自动登录）
       const storedLoggedIn = localStorage.getItem('pmos_isLoggedIn');
@@ -9477,7 +10927,6 @@ ${userQuestion}
           loadAll();
           // Amy：数据加载后自动生成智能通知
           nextTick(()=>{generateSmartNotifications();});
-          console.log('自动恢复登录状态，用户:', user.value.username);
           initAutoRefresh();loadDashboardConfig();
         }catch(e){
           console.error('恢复登录状态失败:', e);
@@ -9510,7 +10959,6 @@ ${userQuestion}
       
       // 运行页面诊断
       const diagnostic = window.testVoicePage && window.testVoicePage();
-      console.log('页面诊断结果:', diagnostic ? '正常' : '有异常');
       
       // 显示友好的状态信息
       voiceStatus.value = '正在检查语音功能...';
@@ -9518,7 +10966,6 @@ ${userQuestion}
       // 延迟初始化语音识别，确保页面已完全加载
       setTimeout(() => {
         try {
-          console.log('开始初始化语音识别...');
           
           // 安全检查：确保页面元素存在
           const voicePanel = document.querySelector('.voice-panel');
@@ -9527,7 +10974,6 @@ ${userQuestion}
           }
           
           const config = JSON.parse(localStorage.getItem('pmos_ai_config') || '{}');
-          console.log('AI配置状态:', config.apiKey ? '已配置' : '未配置');
           
           if (config.apiKey) {
             // 使用更安全的初始化方式
@@ -9535,11 +10981,9 @@ ${userQuestion}
               try {
                 const success = initVoiceRecognition();
                 if (success) {
-                  console.log('✅ 语音识别初始化成功');
                   voiceStatus.value = '语音识别已就绪，请点击麦克风按钮开始';
                   showToast('语音功能已就绪', 'success');
                 } else {
-                  console.log('⚠️ 语音识别初始化失败');
                   voiceStatus.value = '语音识别不可用，请使用文本输入';
                   showToast('语音识别不可用，请使用文本输入', 'warning');
                 }
@@ -9561,6 +11005,27 @@ ${userQuestion}
           showToast('页面初始化遇到问题，但核心功能正常', 'warning');
         }
       }, 1000);
+      
+      // 移动端触摸事件监听（PC端不注册）
+      if(isMobileDevice()){
+        document.addEventListener('touchstart',handleTouchStart,{passive:true});
+        document.addEventListener('touchmove',handleTouchMove,{passive:false});
+        document.addEventListener('touchend',handleTouchEnd,{passive:true});
+      }
+      
+      // 键盘快捷键监听
+      document.addEventListener('keyup',handleKeyUp);
+      
+      // 窗口大小变化监听（虚拟键盘处理）
+      window.addEventListener('resize',handleResize);
+      handleResize();
+      
+      // 注册Service Worker（PWA离线支持）
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.register('sw.js').then(reg=>{
+        }).catch(err=>{
+        });
+      }
     });
 
     // 每次 Vue 更新 DOM 后自动刷新图标（节流，避免频繁调用）
@@ -9574,13 +11039,17 @@ ${userQuestion}
     });
 
     return {
+      // i18n 多语言支持
+      currentLang,langOptions,$t,t,switchLanguage,
       isLoggedIn,user,currentPage,projects,customers,tasks,issues,experiences,capabilities,diaries,teamMembers,files,meetings,pendingFile,showFileModeModal,fileModeLoading,
       stats,activeProjects,filteredProjects,filteredTasks,filteredMeetings,filteredDiaries,filteredTeamMembers,searchKeyword,searchTaskKeyword,statusTaskFilter,statusFilter,positionFilter,
       showModal,modalType,modalTitle,formData,toast,loginForm,aiConfig,
       voiceRecording,voiceStatus,voiceText,aiResult,savingToTable,selectedEntities,duplicateCheck,
       chatInput,chatMessages,chatHistory,currentSessionId,chatLoading,chatVoiceRecording,chatVoiceStatus,startNewChat,switchSession,deleteSession,toggleChatVoice,pendingCommand,executeAiCommand,cancelAiCommand,isStreaming,streamingContent,stopStreaming,
       confirmUpdateExisting,forceCreateNew,cancelDuplicateCheck,
-      handleLogin,handleLogout,handleKeyUp,saveAiConfig,setTheme,
+      handleLogin,handleLogout,handleKeyUp,isInputFocused,
+      showShortcutHelp,shortcuts,
+      saveAiConfig,setTheme,initTheme,notifyPrefs,saveNotifyPrefs,
       toggleVoice,analyzeWithAI,getTypeName,getFieldName,saveAiResult,cancelAiResult,sendToAI,handleChatKeyUp,toggleEntitySelection,saveSelectedEntities,analyzeTextInput,clearTextInput,switchToVoicePage,startDashboardVoice,
       generateDemoData,clearAllData,
       loadAll,openModal,closeModal,saveProject,editProject,saveTask,editTask,saveCustomer,editCustomer,
@@ -9588,7 +11057,7 @@ ${userQuestion}
       saveDiary,editDiary,saveMeeting,editMeeting,deleteMeeting,submitMeetingForm,
       viewProject,viewTask,viewIssue,viewExperience,viewCapability,viewMeeting,viewCustomer,viewFile,
       uploadFile,downloadFile,deleteFile,formatFileSize,handleFileMode,
-      deleteItem,formatMoney,truncate,getStatusBadge,getPriorityBadge,
+      deleteItem,formatMoney,truncate,getStatusBadge,getPriorityBadge,getProjectName,
       memberProjectHistoryStr,editMember,addMember,submitMemberForm,dashboardAiMessages,dashboardAiInput,dashboardAiLoading,sendToDashboardAI,
       inputHistory,showInputHistory,restoreInput,
       renderMarkdown,formatMessage,forceLogout,
@@ -9597,7 +11066,11 @@ ${userQuestion}
       // 通知中心
       notifications,showNotificationPanel,unreadCount,sortedNotifications,
       markNotificationRead,markAllNotificationsRead,dismissNotification,handleNotificationClick,clearAllNotifications,getNotifTypeConfig,generateSmartNotifications,
-      // 仪表盘自定义 + 导出
+      // 工作流自动化
+      workflowRules,showWorkflowPanel,ruleTypes,ruleForm,workflowRuleForm,editingRuleId,
+      openRuleForm,saveWorkflowRule,deleteWorkflowRule,toggleRuleEnabled,
+      // 实时协作
+      recentActivities,simulateTeamActivity,loadRecentActivities,
       lastRefreshTime,formatRefreshTime,handleRefreshData,autoRefreshEnabled,autoRefreshInterval,toggleAutoRefresh,refreshIntervalSeconds,initAutoRefresh,
       dashboardCards,loadDashboardConfig,toggleCardVisibility,moveCardUp,moveCardDown,resetDashboardLayout,showDashboardSettings,
       exportToCSV,exportProjects,exportTasks,exportCustomers,exportTeam,exportProjectPDF,showExportMenu,
@@ -9636,7 +11109,26 @@ ${userQuestion}
       sidebarCollapsed,mobileSidebarOpen,windowWidth,isMobile,isTablet,
       toggleSidebar,toggleMobileSidebar,closeMobileSidebar,
       sidebarWidth,currentPageTitle,currentPageSection,
-      handleTouchStart,handleTouchEnd,shouldVirtualScroll,
+      handleTouchStart,handleTouchMove,handleTouchEnd,shouldVirtualScroll,
+      // 下拉刷新
+      touchStartX,touchStartY,touchEndX,touchEndY,isPulling,pullDistance,isRefreshing,showPullIndicator,pullText,triggerRefresh,createRipple,
+      // 数据导入导出
+      jsonFileInput,excelFileInput,
+      triggerImportJSON,triggerImportExcel,
+      exportJSON,importJSON,
+      exportProjectsExcel,exportTasksExcel,importExcel,
+      // 项目模板
+      projectTemplates,loadProjectTemplates,saveProjectTemplates,
+      showProjectTemplatePanel,projectTemplateForm,editingProjectTemplateId,
+      openProjectTemplateForm,cancelProjectTemplateForm,saveProjectTemplate,
+      deleteProjectTemplate,applyProjectTemplate,
+      // 移动端触摸增强
+      touchStartX,touchStartY,touchEndX,touchEndY,
+      isPulling,pullDistance,isRefreshing,showPullIndicator,pullText,
+      createRipple,
+      triggerRefresh,handleResize,
+        miniPieSvg,miniBarSvg,miniLineSvg,miniTeamSvg,
+    
     }
   }
 });
