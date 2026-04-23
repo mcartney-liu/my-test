@@ -2775,6 +2775,20 @@
         <div class="form-group"><label for="task-tags-edit">标签（逗号分隔）</label><input type="text" v-model="formData.tags" class="form-input" id="task-tags-edit" name="taskTags" placeholder="例如：前端,登录模块,bug"></div>
         <div class="form-group"><label for="task-description-edit">任务描述</label><textarea v-model="formData.description" class="form-input" id="task-description-edit" name="taskDescription" rows="3" placeholder="详细描述任务内容、背景、目标..."></textarea></div>
         <div class="form-group"><label for="task-checkitems-edit">检查清单（每行一项）</label><textarea v-model="formData.checkItems" class="form-input" id="task-checkitems-edit" name="taskCheckItems" rows="3" placeholder="检查项1&#10;检查项2&#10;检查项3"></textarea></div>
+        <div class="form-group">
+          <label style="display:flex;justify-content:space-between;align-items:center;">子任务清单 <span v-if="formData.checklist && formData.checklist.length" style="font-size:12px;color:var(--success);font-weight:400;">{{formData.checklist.filter(c=>c.done).length}}/{{formData.checklist.length}} 已完成</span></label>
+          <div style="background:var(--bg);border-radius:var(--radius);padding:12px;border:1px solid var(--border);">
+            <div v-for="(ci,idx) in (formData.checklist||[])" :key="ci.id||idx" style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border);">
+              <span style="cursor:pointer;font-size:16px;" :style="{color:ci.done?'var(--success)':'var(--muted)'}" @click="toggleChecklist(formData.id,idx)">{{ci.done?'☑':'☐'}}</span>
+              <span :style="{textDecoration:ci.done?'line-through':'none',color:ci.done?'var(--muted)':'var(--text)'}">{{ci.text}}</span>
+              <span style="margin-left:auto;cursor:pointer;color:var(--danger);font-size:16px;" @click="removeChecklistItem(formData.id,idx)">×</span>
+            </div>
+            <div v-if="!formData.checklist || !formData.checklist.length" style="font-size:12px;color:var(--muted);padding:8px 0;text-align:center;">暂无子任务</div>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <input v-model="newChecklistText" placeholder="+ 添加子任务，回车确认" class="form-input" style="flex:1;font-size:12px;padding:6px 10px;" @keyup.enter="addChecklistItem(formData.id,newChecklistText);newChecklistText=''"/>
+            </div>
+          </div>
+        </div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" @click="closeModal">取消</button><button type="submit" class="btn btn-primary">保存修改</button></div>
       </form>
 
