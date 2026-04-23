@@ -177,9 +177,42 @@
           <div class="mobile-header-title">{{currentPageTitle}}</div>
           <div class="mobile-header-section" v-if="currentPageSection">{{currentPageSection}}</div>
         </div>
+        <button class="global-search-btn" @click="showGlobalSearch=!showGlobalSearch" title="全局搜索 (Ctrl+K)">
+          <i data-lucide="search" style="width:18px;height:18px;"></i>
+        </button>
         <button class="mobile-user-btn" @click="currentPage='settings'" :title="user.nickname||user.username">
           {{(user.nickname||user.username||'U').charAt(0).toUpperCase()}}
         </button>
+      </div>
+      <!-- 全局搜索面板 -->
+      <div class="global-search-overlay" v-if="showGlobalSearch" @click.self="showGlobalSearch=false"></div>
+      <div class="global-search-panel" :class="{open:showGlobalSearch}">
+        <div class="global-search-header">
+          <i data-lucide="search" style="width:20px;height:20px;color:var(--text-muted);"></i>
+          <input type="text" v-model="globalSearchKeyword" @input="performGlobalSearch" placeholder="搜索任务、项目、客户、成员..." class="global-search-input" ref="globalSearchInput" @keydown.esc="showGlobalSearch=false">
+          <kbd class="search-kbd" v-if="!isMobile">ESC</kbd>
+          <button class="search-close-btn" @click="showGlobalSearch=false"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+        </div>
+        <div class="global-search-results" v-if="globalSearchKeyword.trim()">
+          <div v-if="!globalSearchResults.length" class="search-empty">
+            <i data-lucide="search-x" style="width:32px;height:32px;color:var(--text-muted);"></i>
+            <p>未找到相关结果</p>
+          </div>
+          <template v-else>
+            <div class="search-result-group" v-for="group in globalSearchResults" :key="group.type">
+              <div class="search-group-header"><i :data-lucide="group.icon" style="width:14px;height:14px;"></i> {{group.label}} ({{group.items.length}})</div>
+              <div class="search-result-item" v-for="item in group.items" :key="item.id" @click="goToSearchResult(item)">
+                <div class="search-result-title">{{item.title}}</div>
+                <div class="search-result-desc" v-if="item.desc">{{item.desc}}</div>
+                <div class="search-result-meta" v-if="item.meta"><span v-for="m in item.meta" :key="m">{{m}}</span></div>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="global-search-tips" v-else>
+          <p><kbd>Ctrl</kbd>+<kbd>K</kbd> 快速打开搜索</p>
+          <p>搜索范围：任务、项目、客户、成员、经验、问题</p>
+        </div>
       </div>
       <!-- Settings -->
       <div v-if="currentPage==='settings'">
@@ -1376,8 +1409,8 @@
                 <div style="font-size:16px;font-weight:600;margin-bottom:4px;color:#f1f5f9;">{{f.name}}</div>
                 <div style="font-size:12px;color:#94a3b8;">{{formatFileSize(f.size)}}</div>
               </div>
-              <span class="badge" :class="formData.parsed?'badge-success':'badge-gray'">
-                {{formData.parsed?'已解析':'待处理'}}
+              <span class="badge" :class="f.parsed?'badge-success':'badge-gray'">
+                {{f.parsed?'已解析'+(f.parsedCount?'('+f.parsedCount+'条)':''):'待处理'}}
               </span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid #334155;">
@@ -1479,8 +1512,8 @@
               
               <div style="margin-top:20px;display:flex;gap:10px;justify-content:space-between;">
                 <div>
-                  <button class="btn btn-primary" @click="saveSelectedEntities(undefined)">
-                    <i data-lucide="check-circle" class="btn-icon" style="margin-right:6px;"></i>保存选中的 {{selectedEntities.length}} 个实体
+                  <button class="btn btn-primary" @click="saveSelectedEntities(undefined)" :disabled="selectedEntities.length===0">
+                    <i data-lucide="save" class="btn-icon" style="margin-right:6px;"></i>{{selectedEntities.length === aiResult.entities.length ? '一键保存全部' : '保存选中的 ' + selectedEntities.length + ' 个'}}
                   </button>
                   <button class="btn btn-secondary" @click="cancelAiResult" style="margin-left:8px;">取消</button>
                 </div>
@@ -1731,6 +1764,41 @@
           </div>
         </div>
         
+        <!-- AI报告生成区 -->
+        <div class="dashboard-ai-section" style="margin-bottom:12px;display:flex;flex-direction:column;">
+          <h3 style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+            <i data-lucide="file-text" style="color:var(--primary);"></i> AI 报告生成
+          </h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn" @click="generateReport('weekly')" :disabled="reportGenerating==='weekly'" style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;border:none;">
+              <i data-lucide="calendar" style="width:14px;height:14px;margin-right:6px;"></i>
+              {{reportGenerating==='weekly'?'生成中...':'生成周报'}}
+            </button>
+            <button class="btn" @click="generateReport('monthly')" :disabled="reportGenerating==='monthly'" style="background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;border:none;">
+              <i data-lucide="calendar-days" style="width:14px;height:14px;margin-right:6px;"></i>
+              {{reportGenerating==='monthly'?'生成中...':'生成月报'}}
+            </button>
+          </div>
+          <!-- 报告展示区 -->
+          <div v-if="generatedReport" style="margin-top:12px;padding:16px;background:var(--bg);border-radius:12px;border:1px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <h4 style="margin:0;color:var(--primary);">📊 {{generatedReport.title}}</h4>
+              <div style="display:flex;gap:8px;">
+                <button @click="copyReport" class="btn btn-sm" style="padding:4px 12px;">
+                  <i data-lucide="copy" style="width:12px;height:12px;margin-right:4px;"></i>复制
+                </button>
+                <button @click="downloadReport" class="btn btn-sm" style="padding:4px 12px;">
+                  <i data-lucide="download" style="width:12px;height:12px;margin-right:4px;"></i>下载
+                </button>
+                <button @click="generatedReport=null" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;">✕</button>
+              </div>
+            </div>
+            <div style="max-height:400px;overflow-y:auto;">
+              <div v-html="generatedReport.html" style="font-size:13px;line-height:1.6;"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- 底部 AI 数据识别区 -->
         <div class="dashboard-ai-section" v-if="dashboardCards.find(c=>c.id==='ai')?.visible" style="display:flex;flex-direction:column;">
           <h3 style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
@@ -1793,7 +1861,9 @@
                 </div>
                 <div v-for="(v,k) in ent.data" :key="k" style="font-size:12px;color:var(--muted);">{{getFieldName(k)}}: {{v||'-'}}</div>
               </div>
-              <button @click="saveSelectedEntities(undefined)" class="btn btn-primary btn-sm" :disabled="selectedEntities.length===0">保存选中的 {{selectedEntities.length}} 个实体</button>
+              <button @click="saveSelectedEntities(undefined)" class="btn btn-primary btn-sm" :disabled="selectedEntities.length===0">
+                {{selectedEntities.length === aiResult.entities.length ? '一键保存全部' : '保存 ' + selectedEntities.length + ' 个'}}
+              </button>
             </div>
           </div>
         </div>
@@ -2004,6 +2074,11 @@
               <button class="filter-tag" :class="{active:taskQuickFilter==='overdue'}" @click="toggleTaskQuickFilter('overdue')">⚠️ 逾期</button>
               <button class="filter-tag" :class="{active:taskQuickFilter==='mine'}" @click="toggleTaskQuickFilter('mine')">👤 我的</button>
             </div>
+            <!-- 标签筛选 -->
+            <div class="tag-filters" v-if="tagList.length" style="display:flex;gap:6px;align-items:center;">
+              <span style="font-size:12px;color:var(--muted);">🏷️</span>
+              <button v-for="tg in tagList" :key="tg.name" class="tag-filter-btn" :class="{active:taskTagFilter===tg.name}" @click="taskTagFilter=taskTagFilter===tg.name?'':tg.name" :style="{borderColor:tg.color,background:taskTagFilter===tg.name?tg.color:'transparent',color:taskTagFilter===tg.name?'#fff':tg.color}">{{tg.name}}</button>
+            </div>
           </div>
           <button class="btn btn-primary" @click="openModal('task')">+ 新建任务</button>
         </div>
@@ -2072,6 +2147,10 @@
               </div>
             </div>
             <p style="font-size:12px;color:#94a3b8;margin-top:8px;">{{truncate(t.description,60)}}</p>
+            <!-- 标签显示 -->
+            <div v-if="t.tags&&t.tags.length" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;">
+              <span v-for="tg in t.tags" :key="tg" class="task-tag" :style="{background:getTagColor(tg)+'20',color:getTagColor(tg),border:'1px solid '+getTagColor(tg)}">{{tg}}</span>
+            </div>
             <!-- Sam：进度条 -->
             <div v-if="t.progress!==undefined" style="margin-top:10px;">
               <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;"><span>进度</span><span>{{t.progress||0}}%</span></div>
@@ -2772,7 +2851,18 @@
           <div class="form-group"><label for="task-est-hours-edit">预估工时（h）</label><input type="number" v-model="formData.estimatedHours" class="form-input" id="task-est-hours-edit" name="taskEstHours" min="0" placeholder="0"></div>
           <div class="form-group"><label for="task-act-hours-edit">实际工时（h）</label><input type="number" v-model="formData.actualHours" class="form-input" id="task-act-hours-edit" name="taskActHours" min="0" placeholder="0"></div>
         </div>
-        <div class="form-group"><label for="task-tags-edit">标签（逗号分隔）</label><input type="text" v-model="formData.tags" class="form-input" id="task-tags-edit" name="taskTags" placeholder="例如：前端,登录模块,bug"></div>
+        <div class="form-group"><label>标签</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+            <span v-for="tg in (formData.tagsArray||[])" :key="tg" class="task-tag" :style="{background:getTagColor(tg)+'20',color:getTagColor(tg),border:'1px solid '+getTagColor(tg),display:'flex',alignItems:'center',gap:4}">
+              {{tg}}
+              <span style="cursor:pointer;" @click="formData.tagsArray=(formData.tagsArray||[]).filter(x=>x!==tg)">×</span>
+            </span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" v-for="tg in tagList" :key="tg.name" :class="['tag-select-btn', (formData.tagsArray||[]).includes(tg.name)?'active':'']" :style="{borderColor:tg.color,background:(formData.tagsArray||[]).includes(tg.name)?tg.color:'transparent',color:(formData.tagsArray||[]).includes(tg.name)?'#fff':tg.color}" @click="if(!formData.tagsArray)formData.tagsArray=[];const idx=formData.tagsArray.indexOf(tg.name);if(idx===-1)formData.tagsArray.push(tg.name);else formData.tagsArray.splice(idx,1)">{{tg.name}}</button>
+            <input type="text" v-model="newTagName" placeholder="+新标签" class="form-input" style="width:80px;font-size:12px;padding:4px 8px;" @keyup.enter="if(newTagName){addTag(newTagName);if(!formData.tagsArray)formData.tagsArray=[];if(!formData.tagsArray.includes(newTagName))formData.tagsArray.push(newTagName);newTagName=''}"/>
+          </div>
+        </div>
         <div class="form-group"><label for="task-description-edit">任务描述</label><textarea v-model="formData.description" class="form-input" id="task-description-edit" name="taskDescription" rows="3" placeholder="详细描述任务内容、背景、目标..."></textarea></div>
         <div class="form-group"><label for="task-checkitems-edit">检查清单（每行一项）</label><textarea v-model="formData.checkItems" class="form-input" id="task-checkitems-edit" name="taskCheckItems" rows="3" placeholder="检查项1&#10;检查项2&#10;检查项3"></textarea></div>
         <div class="form-group">
@@ -3608,6 +3698,21 @@ const app=createApp({
       });
     });
     const tasks=ref([]);
+    // ===== 标签系统 =====
+    const tagList=ref([]); // 全局标签列表 [{name, color}]
+    const taskTagFilter=ref(''); // 任务标签筛选
+    const projectTagFilter=ref(''); // 项目标签筛选
+    const tagColors=['#ef4444','#f97316','#eab308','#22c55e','#14b8a6','#3b82f6','#8b5cf6','#ec4899'];
+    const loadTags=()=>{const d=localStorage.getItem('pmos_tags');if(d)tagList.value=JSON.parse(d);};
+    const saveTags=()=>{localStorage.setItem('pmos_tags',JSON.stringify(tagList.value));};
+    const addTag=(name)=>{if(!name||tagList.value.find(t=>t.name===name))return;const color=tagColors[tagList.value.length%tagColors.length];tagList.value.push({name,color});saveTags();};
+    const removeTag=(name)=>{tagList.value=tagList.value.filter(t=>t.name!==name);saveTags();};
+    const getTagColor=(name)=>{const t=tagList.value.find(x=>x.name===name);return t?t.color:'#6b7280';};
+    const toggleTagOnTask=(taskId,tagName)=>{const t=tasks.value.find(x=>x.id===taskId);if(!t)return;if(!t.tags)t.tags=[];const idx=t.tags.indexOf(tagName);if(idx===-1)t.tags.push(tagName);else t.tags.splice(idx,1);localStorage.setItem('pmos_tasks',JSON.stringify(tasks.value));};
+    const toggleTagOnProject=(projectId,tagName)=>{const p=projects.value.find(x=>x.id===projectId);if(!p)return;if(!p.tags)p.tags=[];const idx=p.tags.indexOf(tagName);if(idx===-1)p.tags.push(tagName);else p.tags.splice(idx,1);localStorage.setItem('pmos_projects',JSON.stringify(projects.value));};
+    const filteredTasksByTag=computed(()=>{if(!taskTagFilter.value)return tasks.value;return tasks.value.filter(t=>t.tags&&t.tags.includes(taskTagFilter.value));});
+    const filteredProjectsByTag=computed(()=>{if(!projectTagFilter.value)return projects.value;return projects.value.filter(p=>p.tags&&p.tags.includes(projectTagFilter.value));});
+    loadTags();
     // ===== 撤销/重做系统 =====
     const undoStack=ref([]);
     const redoStack=ref([]);
@@ -3677,6 +3782,7 @@ const app=createApp({
     const removeChecklistItem=(taskId,idx)=>{const t=tasks.value.find(x=>x.id===taskId);if(!t||!t.checklist)return;t.checklist.splice(idx,1);saveTaskChecklist(t);};
     const saveTaskChecklist=(t)=>{localStorage.setItem('pmos_tasks',JSON.stringify(tasks.value));};
     const newChecklistText=ref('');
+    const newTagName=ref('');
     const issues=ref([]);
     const experiences=ref([]);
     const capabilities=ref([]);
@@ -3796,6 +3902,87 @@ const aiConfig=reactive({apiKey:''});
     // ===== Joy+Amy：通知中心数据层 =====
     const notifications=ref([]);
     const showNotificationPanel=ref(false);
+    
+    // ===== 全局搜索 =====
+    const showGlobalSearch=ref(false);
+    const globalSearchKeyword=ref('');
+    const globalSearchResults=ref([]);
+    
+    const performGlobalSearch=()=>{
+      const keyword=globalSearchKeyword.value.trim().toLowerCase();
+      if(!keyword){globalSearchResults.value=[];return;}
+      const results=[];
+      
+      // 搜索任务
+      const taskMatches=tasks.value.filter(t=>
+        (t.name&&t.name.toLowerCase().includes(keyword))||
+        (t.description&&t.description.toLowerCase().includes(keyword))||
+        (t.tags&&t.tags.toLowerCase().includes(keyword))
+      ).slice(0,10).map(t=>({
+        id:t.id,type:'task',title:t.name,desc:t.description?.substring(0,100),meta:[t.status,t.priority,t.project].filter(Boolean),raw:t
+      }));
+      if(taskMatches.length)results.push({type:'task',label:'任务',icon:'check-square',items:taskMatches});
+      
+      // 搜索项目
+      const projectMatches=projects.value.filter(p=>
+        (p.name&&p.name.toLowerCase().includes(keyword))||
+        (p.description&&p.description.toLowerCase().includes(keyword))
+      ).slice(0,10).map(p=>({
+        id:p.id,type:'project',title:p.name,desc:p.description?.substring(0,100),meta:[p.status,p.manager].filter(Boolean),raw:p
+      }));
+      if(projectMatches.length)results.push({type:'project',label:'项目',icon:'folder',items:projectMatches});
+      
+      // 搜索客户
+      const customerMatches=customers.value.filter(c=>
+        (c.name&&c.name.toLowerCase().includes(keyword))||
+        (c.company&&c.company.toLowerCase().includes(keyword))||
+        (c.contact&&c.contact.toLowerCase().includes(keyword))
+      ).slice(0,10).map(c=>({
+        id:c.id,type:'customer',title:c.name,desc:c.company,meta:[c.type,c.status].filter(Boolean),raw:c
+      }));
+      if(customerMatches.length)results.push({type:'customer',label:'客户',icon:'users',items:customerMatches});
+      
+      // 搜索成员
+      const memberMatches=members.value.filter(m=>
+        (m.name&&m.name.toLowerCase().includes(keyword))||
+        (m.role&&m.role.toLowerCase().includes(keyword))||
+        (m.skills&&m.skills.toLowerCase().includes(keyword))
+      ).slice(0,10).map(m=>({
+        id:m.id,type:'member',title:m.name,desc:m.role,meta:[m.department,m.position].filter(Boolean),raw:m
+      }));
+      if(memberMatches.length)results.push({type:'member',label:'成员',icon:'user',items:memberMatches});
+      
+      // 搜索经验
+      const expMatches=experiences.value.filter(e=>
+        (e.title&&e.title.toLowerCase().includes(keyword))||
+        (e.content&&e.content.toLowerCase().includes(keyword))||
+        (e.tags&&e.tags.toLowerCase().includes(keyword))
+      ).slice(0,10).map(e=>({
+        id:e.id,type:'experience',title:e.title,desc:e.content?.substring(0,100),meta:[e.category].filter(Boolean),raw:e
+      }));
+      if(expMatches.length)results.push({type:'experience',label:'经验',icon:'lightbulb',items:expMatches});
+      
+      // 搜索问题
+      const issueMatches=issues.value.filter(i=>
+        (i.title&&i.title.toLowerCase().includes(keyword))||
+        (i.description&&i.description.toLowerCase().includes(keyword))
+      ).slice(0,10).map(i=>({
+        id:i.id,type:'issue',title:i.title,desc:i.description?.substring(0,100),meta:[i.status,i.severity].filter(Boolean),raw:i
+      }));
+      if(issueMatches.length)results.push({type:'issue',label:'问题',icon:'alert-triangle',items:issueMatches});
+      
+      globalSearchResults.value=results;
+    };
+    
+    const goToSearchResult=(item)=>{
+      showGlobalSearch.value=false;
+      globalSearchKeyword.value='';
+      globalSearchResults.value=[];
+      // 跳转到对应页面
+      const pageMap={task:'tasks',project:'projects',customer:'customers',member:'team',experience:'knowledge',issue:'issues'};
+      const page=pageMap[item.type];
+      if(page)currentPage.value=page;
+    };
     const unreadCount=computed(()=>notifications.value.filter(n=>!n.read).length);
     const loadNotifications=()=>{
       try{const d=localStorage.getItem('pmos_notifications');notifications.value=d?JSON.parse(d):[];}catch(e){notifications.value=[];}
@@ -3938,10 +4125,120 @@ const aiConfig=reactive({apiKey:''});
         }
       });
 
+      // 6. 🤖 AI智能风险分析 - 任务延期风险预测
+      // 分析：未开始但距离截止日期很近、进行中但进度很低、高优先级任务积压
+      tasks.value.forEach(t=>{
+        if(t.status==='已完成')return;
+        const key='ai_risk_'+t.id;
+        if(existingIds.has(key))return;
+        
+        const due=t.dueDate?new Date(t.dueDate):null;
+        const diffDays=due?Math.ceil((due-today)/86400000):999;
+        
+        // 风险判断逻辑
+        let riskLevel='';
+        let riskReason='';
+        
+        // 风险1: 未开始但截止日期很近（<3天）
+        if(t.status==='待处理'&&diffDays<3&&diffDays>=0){
+          riskLevel='high';
+          riskReason=`任务尚未开始，但${diffDays===0?'今天':diffDays===1?'明天':'后天'}截止`;
+        }
+        // 风险2: 进行中但进度<30%且截止日期<5天
+        else if(t.status==='进行中'&&t.progress<30&&diffDays<5&&diffDays>=0){
+          riskLevel='high';
+          riskReason=`进度仅${t.progress||0}%，距离截止仅${diffDays}天`;
+        }
+        // 风险3: 进行中但进度<50%且截止日期已过
+        else if(t.status==='进行中'&&t.progress<50&&due&&due<today){
+          riskLevel='critical';
+          const overdueDays=Math.floor((today-due)/86400000);
+          riskReason=`进度仅${t.progress||0}%，已逾期${overdueDays}天`;
+        }
+        // 风险4: 紧急/高优先级任务待处理超过2天
+        else if((t.priority==='紧急'||t.priority==='高')&&t.status==='待处理'){
+          const created=t.createdAt?new Date(t.createdAt):today;
+          const waitingDays=Math.floor((today-created)/86400000);
+          if(waitingDays>=2){
+            riskLevel='medium';
+            riskReason=`${t.priority}优先级任务已等待${waitingDays}天未开始`;
+          }
+        }
+        
+        if(riskLevel){
+          newNotifs.push({
+            id:Date.now()+Math.random(),
+            key,
+            type:'ai_risk',
+            title:'🤖 AI风险预警',
+            message:`"${t.name}" - ${riskReason}，负责人：${t.assignee||'未指定'}`,
+            targetPage:'tasks',
+            createdAt:now.toISOString(),
+            read:false,
+            priority:riskLevel,
+            suggestion: generateRiskSuggestion(t,riskReason,diffDays)
+          });
+        }
+      });
+
+      // 7. 🤖 AI智能分析 - 项目整体风险评估
+      projects.value.forEach(p=>{
+        if(p.status!=='进行中')return;
+        const key='ai_project_risk_'+p.id;
+        if(existingIds.has(key))return;
+        
+        const pTasks=tasks.value.filter(t=>t.projectId===p.id);
+        if(!pTasks.length)return;
+        
+        const total=pTasks.length;
+        const done=pTasks.filter(t=>t.status==='已完成').length;
+        const overdue=pTasks.filter(t=>t.status!=='已完成'&&t.dueDate&&new Date(t.dueDate)<today);
+        const notStarted=pTasks.filter(t=>t.status==='待处理');
+        const highPriority=pTasks.filter(t=>(t.priority==='紧急'||t.priority==='高')&&t.status!=='已完成');
+        
+        // 综合风险评分
+        const doneRate=total?done/total:0;
+        const overdueRate=total?overdue.length/total:0;
+        const notStartedRate=total?notStarted.length/total:0;
+        const riskScore=overdueRate*50+notStartedRate*30+(1-doneRate)*20;
+        
+        if(riskScore>=40){
+          newNotifs.push({
+            id:Date.now()+Math.random(),
+            key,
+            type:'ai_project_risk',
+            title:'🤖 AI项目风险',
+            message:`"${p.name}" 风险评分${Math.round(riskScore)}分：逾期${overdue.length}个、未开始${notStarted.length}个、高优先级${highPriority.length}个`,
+            targetPage:'projects',
+            createdAt:now.toISOString(),
+            read:false,
+            priority:riskScore>=60?'critical':'high',
+            suggestion: riskScore>=60?'建议召开项目风险评审会议，重新评估交付计划':'建议优先处理逾期和高优先级任务'
+          });
+        }
+      });
+
       if(newNotifs.length){
         notifications.value=[...newNotifs,...notifications.value].slice(0,50);
         saveNotifications();
       }
+    };
+
+    // AI风险建议生成函数
+    const generateRiskSuggestion=(task,reason,diffDays)=>{
+      if(task.status==='待处理'&&diffDays<3){
+        return '建议立即启动任务或调整截止日期';
+      }
+      if(task.status==='进行中'&&task.progress<30&&diffDays<5){
+        return '建议增加资源或拆分任务';
+      }
+      if(task.progress<50&&diffDays<0){
+        return '建议评估是否需要延期交付';
+      }
+      if((task.priority==='紧急'||task.priority==='高')&&task.status==='待处理'){
+        return '建议优先安排资源处理';
+      }
+      return '请关注任务进度';
     };
 
     // 获取通知类型配置对象（模板用）
@@ -4163,6 +4460,144 @@ ${project.description?`<h2>📝 项目描述</h2><p style="font-size:14px;line-h
       showToast('项目摘要报告已生成（可保存为PDF）','success');
     };
     // ===== 仪表盘自定义 + 数据导出结束 =====
+
+    // ===== AI 报告生成 =====
+    const reportGenerating=ref(null);
+    const generatedReport=ref(null);
+
+    const generateReport=async(type)=>{
+      if(!aiConfig.value.apiKey){
+        showToast('请先配置AI API密钥','error');
+        return;
+      }
+      reportGenerating.value=type;
+      
+      const now=new Date();
+      const weekAgo=new Date(now.getTime()-7*24*60*60*1000);
+      const monthAgo=new Date(now.getTime()-30*24*60*60*1000);
+      const startDate=type==='weekly'?weekAgo:monthAgo;
+      
+      // 统计数据
+      const periodTasks=tasks.value.filter(t=>new Date(t.createdAt)>=startDate||t.status==='已完成'&&new Date(t.updatedAt||t.createdAt)>=startDate);
+      const periodProjects=projects.value.filter(p=>new Date(p.createdAt)>=startDate||p.status==='已完成'&&new Date(p.updatedAt||p.createdAt)>=startDate);
+      const periodCustomers=customers.value.filter(c=>new Date(c.createdAt)>=startDate);
+      const periodExperiences=experiences.value.filter(e=>new Date(e.createdAt)>=startDate);
+      const periodIssues=issues.value.filter(i=>new Date(i.createdAt)>=startDate);
+      
+      const completedTasks=periodTasks.filter(t=>t.status==='已完成');
+      const overdueTasks=tasks.value.filter(t=>t.status!=='已完成'&&t.dueDate&&new Date(t.dueDate)<now);
+      const inProgressTasks=tasks.value.filter(t=>t.status==='进行中');
+      const pendingTasks=tasks.value.filter(t=>t.status==='待处理');
+      
+      // 团队工作量
+      const memberStats=teamMembers.value.map(m=>{
+        const mTasks=tasks.value.filter(t=>t.assignee===m.name);
+        return{name:m.name,pending:mTasks.filter(t=>t.status!=='已完成').length,done:mTasks.filter(t=>t.status==='已完成').length};
+      }).sort((a,b)=>b.pending-a.pending).slice(0,5);
+      
+      // 风险任务
+      const riskyTasks=tasks.value.filter(t=>{
+        if(t.status==='已完成')return false;
+        const due=t.dueDate?new Date(t.dueDate):null;
+        const diffDays=due?Math.ceil((due-now)/86400000):999;
+        return (t.status==='待处理'&&diffDays<3)||(t.status==='进行中'&&t.progress<30&&diffDays<5)||(t.priority==='紧急'||t.priority==='高');
+      });
+      
+      const stats={
+        type,
+        period:type==='weekly'?'本周':'本月',
+        dateRange:`${startDate.toLocaleDateString('zh-CN')} ~ ${now.toLocaleDateString('zh-CN')}`,
+        tasks:{total:periodTasks.length,completed:completedTasks.length,inProgress:inProgressTasks.length,pending:pendingTasks.length,overdue:overdueTasks.length},
+        projects:{total:periodProjects.length,completed:periodProjects.filter(p=>p.status==='已完成').length,inProgress:periodProjects.filter(p=>p.status==='进行中').length},
+        customers:{total:periodCustomers.length,active:customers.value.filter(c=>c.status==='活跃').length},
+        experiences:{total:periodExperiences.length},
+        issues:{total:periodIssues.length,resolved:periodIssues.filter(i=>i.status==='已解决').length},
+        team:memberStats,
+        riskyTasks:riskyTasks.slice(0,5)
+      };
+      
+      // 构建prompt
+      const prompt=`你是一个项目管理助手，请根据以下数据生成一份${type==='weekly'?'周':'月'}报，要求：
+1. 用中文，语气专业但不生硬
+2. 突出亮点和问题
+3. 给出下一步建议
+4. 用Markdown格式输出
+
+## 数据统计
+- 时间范围：${stats.dateRange}
+- 任务：完成${stats.tasks.completed}个，进行中${stats.tasks.inProgress}个，待处理${stats.tasks.pending}个，逾期${stats.tasks.overdue}个
+- 项目：共${stats.projects.total}个，进行中${stats.projects.inProgress}个，已完成${stats.projects.completed}个
+- 客户：新增${stats.customers.total}个，活跃${stats.customers.active}个
+- 经验沉淀：${stats.experiences.total}条
+- 问题记录：${stats.issues.total}个，已解决${stats.issues.resolved}个
+
+## 团队工作量TOP5
+${memberStats.map((m,i)=>`${i+1}. ${m.name}：待处理${m.pending}个，已完成${m.done}个`).join('\n')}
+
+## 需要关注的风险任务
+${riskyTasks.length?riskyTasks.map(t=>`- ${t.name}（${t.status}，优先级：${t.priority||'中'}，负责人：${t.assignee||'未指定'}）`).join('\n'):'暂无高风险任务'}
+
+请生成报告，包含：工作概述、关键成果、风险预警、下一步计划四个部分。`;
+      
+      try{
+        const res=await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${aiConfig.value.apiKey}`},
+          body:JSON.stringify({model:'glm-4-flash',messages:[{role:'user',content:prompt}],temperature:0.7})
+        });
+        const data=await res.json();
+        if(data.choices&&data.choices[0]){
+          const content=data.choices[0].message.content;
+          // 简单的Markdown转HTML
+          const html=content
+            .replace(/^### (.*$)/gim,'<h3 style="color:var(--primary);margin:16px 0 8px;">$1</h3>')
+            .replace(/^## (.*$)/gim,'<h2 style="color:var(--text);margin:20px 0 10px;border-bottom:1px solid var(--border);padding-bottom:8px;">$1</h2>')
+            .replace(/^# (.*$)/gim,'<h1 style="color:var(--primary);margin:0 0 16px;">$1</h1>')
+            .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g,'<em>$1</em>')
+            .replace(/^- (.*$)/gim,'<li style="margin:4px 0;">$1</li>')
+            .replace(/^\d+\. (.*$)/gim,'<li style="margin:4px 0;">$1</li>')
+            .replace(/\n/g,'<br>');
+          
+          generatedReport.value={
+            title:type==='weekly'?'周报':'月报',
+            markdown:content,
+            html,
+            stats
+          };
+          showToast('报告生成成功','success');
+        }else{
+          showToast('AI返回数据异常','error');
+        }
+      }catch(err){
+        console.error('Report generation error:',err);
+        showToast('报告生成失败：'+err.message,'error');
+      }finally{
+        reportGenerating.value=null;
+      }
+    };
+
+    const copyReport=()=>{
+      if(!generatedReport.value)return;
+      navigator.clipboard.writeText(generatedReport.value.markdown).then(()=>{
+        showToast('报告已复制到剪贴板','success');
+      }).catch(()=>{
+        showToast('复制失败','error');
+      });
+    };
+
+    const downloadReport=()=>{
+      if(!generatedReport.value)return;
+      const blob=new Blob([generatedReport.value.markdown],{type:'text/markdown;charset=utf-8'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=`PM-OS-${generatedReport.value.title}_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('报告已下载','success');
+    };
+    // ===== AI 报告生成结束 =====
 
     // ===== Joy+Amy+Will：权限管理 + 审计日志 =====
     // 角色定义
@@ -5442,6 +5877,8 @@ ${comparisonData.value.map(d=>d.label+': 本月'+d.current+' / 上月'+d.previou
       let data=tasks.value;
       if(searchTaskKeyword.value)data=data.filter(t=>t.name.includes(searchTaskKeyword.value));
       if(statusTaskFilter.value)data=data.filter(t=>t.status===statusTaskFilter.value);
+      // 标签筛选
+      if(taskTagFilter.value)data=data.filter(t=>t.tags&&t.tags.includes(taskTagFilter.value));
       // 快捷筛选
       const now=new Date();const today=now.toISOString().slice(0,10);
       const weekAgo=new Date(now-7*86400000).toISOString();
@@ -7006,22 +7443,36 @@ ${userQuestion}
         return;
       }
       
+      // 检查是否有重复记录需要确认
+      let pendingConfirm = false;
       indicesToSave.forEach(index=>{
         if(index>=0&&index<entities.length){
-          if(saveSingleEntity(entities[index])){
+          const result = saveSingleEntity(entities[index]);
+          if(result === 'pending_confirm'){
+            pendingConfirm = true;
+          } else if(result){
             savedCount++;
           }
         }
       });
       
-      if(savedCount>0){
-        showToast(`成功保存${savedCount}个实体`,'success');
+      // 如果有重复记录需要确认，不重置状态
+      if(pendingConfirm){
+        showToast(`检测到重复记录，请确认处理方式`,'warning');
+        savingToTable.value=false;
+        return;
       }
       
-      // 重置AI结果
-      aiResult.value=null;
-      voiceText.value='';
-      voiceStatus.value='正在聆听，请说话...';
+      if(savedCount>0){
+        showToast(`成功保存${savedCount}个实体`,'success');
+        // 重置AI结果，准备下一次输入
+        aiResult.value=null;
+        voiceText.value='';
+        voiceStatus.value='已保存，可继续语音输入...';
+        setTimeout(()=>{
+          voiceStatus.value='正在聆听，请说话...';
+        },1500);
+      }
       savingToTable.value=false;
     };
 
@@ -7041,14 +7492,22 @@ ${userQuestion}
       savingToTable.value=true;
       const{type,data}=aiResult.value.entity;
       
-      if(saveSingleEntity({type,data})){
-        showToast(getTypeName(type)+'已保存','success');
+      const result = saveSingleEntity({type,data});
+      if(result === 'pending_confirm'){
+        // 检测到重复，等待用户确认
+        savingToTable.value=false;
+        return;
       }
-      
-      // 重置AI结果
-      aiResult.value=null;
-      voiceText.value='';
-      voiceStatus.value='正在聆听，请说话...';
+      if(result){
+        showToast(getTypeName(type)+'已保存','success');
+        // 重置AI结果，准备下一次输入
+        aiResult.value=null;
+        voiceText.value='';
+        voiceStatus.value='已保存，可继续语音输入...';
+        setTimeout(()=>{
+          voiceStatus.value='正在聆听，请说话...';
+        },1500);
+      }
       savingToTable.value=false;
     };
 
@@ -7124,12 +7583,12 @@ ${userQuestion}
             }
             
             const filePromptContent = content.substring(0, 5000);
-            const prompt='请分析以下文件内容，提取结构化数据。\n\n文件名: '+file.name+'\n文件类型: '+(file.type||ext)+'\n\n文件内容:\n'+filePromptContent+'\n\n请将文件内容智能分类并提取为JSON格式，可选类型：\n1. task - 任务：包含名称、优先级、截止期、负责人等字段\n2. project - 项目：包含名称、客户、负责人、状态、进度等字段\n3. customer - 客户：包含公司名称、行业、联系人、联系电话等字段\n4. issue - 问题：包含标题、类型（risk/bug）、状态等字段\n5. experience - 经验：包含标题、分类、内容、解决方案等字段\n6. meeting - 会议：包含标题、时间、参与者、会议纪要等字段\n\n请返回JSON格式：\n{\n  "type": "task/project/customer/issue/experience/meeting",\n  "data": { // 根据type选择对应字段}\n}\n\n请确保返回的JSON格式正确可解析';
+            const prompt='请分析以下文件内容，提取结构化数据。\n\n文件名: '+file.name+'\n文件类型: '+(file.type||ext)+'\n\n文件内容:\n'+filePromptContent+'\n\n请将文件内容智能分类并提取为JSON格式，可选类型：\n1. task - 任务：包含name(名称)、priority(优先级)、deadline(截止日期)、assignee(负责人)等字段\n2. project - 项目：包含name(名称)、client(客户)、manager(负责人)、status(状态)、progress(进度)等字段\n3. customer - 客户：包含name(公司名称)、industry(行业)、contact(联系人)、phone(联系电话)等字段\n4. issue - 问题：包含title(标题)、type(类型risk/bug)、status(状态)等字段\n5. experience - 经验：包含title(标题)、category(分类)、content(内容)、solution(解决方案)等字段\n6. meeting - 会议：包含title(标题)、date(时间)、participants(参与者)、notes(会议纪要)等字段\n7. member - 成员：包含name(姓名)、role(角色)、email(邮箱)、phone(电话)等字段\n\n如果文件包含多条记录，请返回数组格式：\n{"items": [{"type": "task", "data": {...}}, {"type": "project", "data": {...}}]}\n如果只有一条记录，返回：\n{"type": "task/project/customer/issue/experience/meeting/member", "data": {...}}\n\n请确保返回的JSON格式正确可解析，不要包含注释。';
 
             const response=await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions',{
               method:'POST',
               headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.apiKey},
-              body:JSON.stringify({model:'glm-4-flash',messages:[{role:'user',content:dataContext+'\n\n'+userPrompt}],temperature:0.1})
+              body:JSON.stringify({model:'glm-4-flash',messages:[{role:'user',content:prompt}],temperature:0.1})
             });
             
             const data=await response.json();
@@ -7141,17 +7600,41 @@ ${userQuestion}
               if(jsonMatch){
                 const result=JSON.parse(jsonMatch[0]);
                 const saveMap={
-                  task:()=>{const list=[...tasks.value];list.unshift({...result.data,id:Date.now(),progress:0,status:'待处理'});localStorage.setItem('pmos_tasks',JSON.stringify(list));loadTasks();},
-                  project:()=>{const list=[...projects.value];list.unshift({...result.data,id:Date.now(),progress:0});localStorage.setItem('pmos_projects',JSON.stringify(list));loadProjects();},
-                  customer:()=>{const list=[...customers.value];list.unshift({...result.data,id:Date.now()});localStorage.setItem('pmos_customers',JSON.stringify(list));loadCustomers();},
-                  issue:()=>{const list=[...issues.value];list.unshift({...result.data,id:Date.now(),status:'open'});localStorage.setItem('pmos_issues',JSON.stringify(list));loadIssues();},
-                  experience:()=>{const list=[...experiences.value];list.unshift({...result.data,id:Date.now()});localStorage.setItem('pmos_experiences',JSON.stringify(list));loadExperiences();},
-                  meeting:()=>{const list=[...meetings.value];list.unshift({...result.data,id:Date.now()});localStorage.setItem('pmos_meetings',JSON.stringify(list));loadMeetings();},
-                  member:()=>{const list=[...teamMembers.value];list.unshift({...result.data,id:Date.now()});saveTeamMembers();loadTeamMembers();},
+                  task:(d)=>{const list=[...tasks.value];list.unshift({...d,id:Date.now(),progress:0,status:'待处理'});localStorage.setItem('pmos_tasks',JSON.stringify(list));loadTasks();},
+                  project:(d)=>{const list=[...projects.value];list.unshift({...d,id:Date.now(),progress:0});localStorage.setItem('pmos_projects',JSON.stringify(list));loadProjects();},
+                  customer:(d)=>{const list=[...customers.value];list.unshift({...d,id:Date.now()});localStorage.setItem('pmos_customers',JSON.stringify(list));loadCustomers();},
+                  issue:(d)=>{const list=[...issues.value];list.unshift({...d,id:Date.now(),status:'open'});localStorage.setItem('pmos_issues',JSON.stringify(list));loadIssues();},
+                  experience:(d)=>{const list=[...experiences.value];list.unshift({...d,id:Date.now()});localStorage.setItem('pmos_experiences',JSON.stringify(list));loadExperiences();},
+                  meeting:(d)=>{const list=[...meetings.value];list.unshift({...d,id:Date.now()});localStorage.setItem('pmos_meetings',JSON.stringify(list));loadMeetings();},
+                  member:(d)=>{const list=[...teamMembers.value];list.unshift({...d,id:Date.now()});saveTeamMembers();loadTeamMembers();},
                 };
-                if(saveMap[result.type]){
-                  saveMap[result.type]();
-                  showToast('文件解析并保存成功','success');                  pendingFile.value=null;
+                let savedCount=0;
+                // 支持单条和多条记录
+                const items=result.items||[{type:result.type,data:result.data}];
+                items.forEach(item=>{
+                  if(saveMap[item.type]){
+                    saveMap[item.type](item.data);
+                    savedCount++;
+                  }
+                });
+                if(savedCount>0){
+                  // 保存文件记录并标记已解析
+                  const fileData={
+                    id:pendingFile.value.id,
+                    name:file.name,
+                    size:file.size,
+                    type:file.type,
+                    uploadTime:new Date().toISOString(),
+                    mode:'parsed',
+                    parsed:true,
+                    parsedCount:savedCount
+                  };
+                  const list=[...files.value];
+                  list.unshift(fileData);
+                  localStorage.setItem('pmos_files',JSON.stringify(list));
+                  loadFiles();
+                  showToast(`成功解析并保存 ${savedCount} 条记录`,'success');
+                  pendingFile.value=null;
                   return;
                 }
               }
@@ -7159,7 +7642,7 @@ ${userQuestion}
             showToast('保存失败','error');
           }catch(err){
             fileModeLoading.value=false;
-            showToast('录音状态: '+err.message,'error');
+            showToast('文件解析失败: '+err.message,'error');
           }
           pendingFile.value=null;
         };
@@ -7713,25 +8196,30 @@ const initTheme=()=>{
 
     const saveTask=()=>{
       const data=[...tasks.value];
+      // 处理标签数组
+      const taskData={...formData,tags:(formData.tagsArray||[]).join(',')};
+      delete taskData.tagsArray;
       if(editingId.value){
         const i=data.findIndex(t=>t.id===editingId.value);
         if(i>-1){
-          pushUndo('task',editingId.value,data[i],{...data[i],...formData});
-          data[i]={...data[i],...formData};
-          logAudit('edit','编辑任务: '+formData.name,'task',formData.name);
+          pushUndo('task',editingId.value,data[i],{...data[i],...taskData});
+          data[i]={...data[i],...taskData};
+          logAudit('edit','编辑任务: '+taskData.name,'task',taskData.name);
         }
       }else{
-        const newTask={...formData,id:Date.now(),progress:0,status:'待处理'};
+        const newTask={...taskData,id:Date.now(),progress:0,status:'待处理'};
         pushUndo('task',newTask.id,null,newTask);
         data.unshift(newTask);
-        logAudit('create','创建任务: '+formData.name,'task',formData.name);
+        logAudit('create','创建任务: '+taskData.name,'task',taskData.name);
       }
       localStorage.setItem('pmos_tasks',JSON.stringify(data));
       loadTasks();closeModal();showToast('操作成功','success');
     };
 
     const editTask=(t)=>{
-      Object.assign(formData,JSON.parse(JSON.stringify(t)));
+      const data=JSON.parse(JSON.stringify(t));
+      data.tagsArray=data.tags?data.tags.split(',').map(x=>x.trim()).filter(x=>x):[];
+      Object.assign(formData,data);
       editingId.value=t.id;
       modalType.value='task';
       modalTitle.value='编辑任务';
@@ -8433,6 +8921,17 @@ const initTheme=()=>{
       // Will：全局点击关闭通知面板和导出菜单
       document.addEventListener('click',()=>{showNotificationPanel.value=false;showExportMenu.value=false;});
       
+      // 全局搜索快捷键 Ctrl+K
+      document.addEventListener('keydown',(e)=>{
+        if((e.ctrlKey||e.metaKey)&&e.key==='k'){
+          e.preventDefault();
+          showGlobalSearch.value=!showGlobalSearch.value;
+          if(showGlobalSearch.value){
+            nextTick(()=>{document.querySelector('.global-search-input')?.focus();});
+          }
+        }
+      });
+      
       // 初始化主题
       initTheme();
       
@@ -8522,6 +9021,8 @@ const initTheme=()=>{
       undoStack,redoStack,performUndo,performRedo,
       // 右键菜单
       contextMenu,showContextMenu,hideContextMenu,contextAction,toggleChecklist,addChecklistItem,removeChecklistItem,newChecklistText,
+      // 标签系统
+      tagList,taskTagFilter,addTag,removeTag,getTagColor,toggleTagOnTask,newTagName,
       // i18n 多语言支持
       currentLang,langOptions,$t,t,switchLanguage,
       isLoggedIn,user,currentPage,projects,customers,tasks,issues,experiences,capabilities,diaries,teamMembers,files,meetings,pendingFile,showFileModeModal,fileModeLoading,
@@ -8548,6 +9049,8 @@ const initTheme=()=>{
       teamWorkloadData,customerValueRanking,projectGanttData,
       // 通知中心
       notifications,showNotificationPanel,unreadCount,sortedNotifications,
+      // 全局搜索
+      showGlobalSearch,globalSearchKeyword,globalSearchResults,performGlobalSearch,goToSearchResult,
       markNotificationRead,markAllNotificationsRead,dismissNotification,handleNotificationClick,clearAllNotifications,getNotifTypeConfig,generateSmartNotifications,
       // 工作流自动化
       workflowRules,showWorkflowPanel,ruleTypes,ruleForm,workflowRuleForm,editingRuleId,
@@ -8600,6 +9103,8 @@ const initTheme=()=>{
       triggerImportJSON,triggerImportExcel,
       exportJSON,importJSON,
       exportProjectsExcel,exportTasksExcel,importExcel,
+      // AI 报告生成
+      reportGenerating,generatedReport,generateReport,copyReport,downloadReport,
       // 项目模板
       projectTemplates,loadProjectTemplates,saveProjectTemplates,
       showProjectTemplatePanel,projectTemplateForm,editingProjectTemplateId,
